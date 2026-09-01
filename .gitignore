@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# pet state (persisted under the app's userData dir; belt-and-suspenders)
+pet.json

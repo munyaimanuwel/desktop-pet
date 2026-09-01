@@ -1,0 +1,50 @@
+// The pet's core, deterministic state.
+// All behaviour here is pure arithmetic — no LLM required.
+const STATES = {
+  idle: 'idle',
+  happy: 'happy',
+  excited: 'excited',
+  sad: 'sad',
+  angry: 'angry',
+  sleepy: 'sleepy',
+  sleeping: 'sleeping',
+  eating: 'eating',
+  thinking: 'thinking',
+  celebrating: 'celebrating',
+  curious: 'curious',
+};
+
+const CLAMP = (v) => Math.max(0, Math.min(100, v));
+
+function createInitialState() {
+  return {
+    name: 'Pip',
+    level: 1,
+    xp: 0,
+    happiness: 70,
+    energy: 80,
+    hunger: 40,
+    mood: 'content',
+    state: STATES.idle,
+    // Timestamps (ms) used by the "feel alive" decay loops.
+    lastActivity: Date.now(),
+    consecutiveFailures: 0,
+    lastWokeUp: Date.now(),
+  };
+}
+
+function clone(s) {
+  return JSON.parse(JSON.stringify(s));
+}
+
+// XP earned scales with level so growth feels meaningful but never punishing.
+function xpForLevel(level) {
+  return level * 100;
+}
+
+module.exports = {
+  STATES,
+  createInitialState,
+  clone,
+  xpForLevel,
+};
