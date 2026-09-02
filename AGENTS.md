@@ -26,6 +26,8 @@ The product should feel playful, polished and surprisingly alive.
 
 Source spec: `project.md`. If this file and `project.md` disagree, prefer `project.md` for product intent and this file for how to work in the repo.
 
+v2 is specified in `docs/v2.md`. Do not implement v2.1 items unless asked. If this file and `docs/v2.md` disagree on v2 scope, prefer `docs/v2.md`.
+
 ---
 
 ## Product principles
@@ -174,7 +176,7 @@ RETURN FROM IDLE
 - Do not add chat UI, cloud backends, accounts, or extra services unless the user asks.
 - Persistence must be local and boring (file or local DB). No distributed store.
 - Prefer existing, ordinary libraries over custom frameworks.
-- Do not invent product features beyond the MVP above.
+- Do not invent product features beyond the current shipped product and, when implementing v2, beyond `docs/v2.md`.
 - Match surrounding code style once implementation exists. Until then, keep the codebase small and obvious.
 - Comments should be short and only explain non-obvious constraints.
 - Do not add docs, CI, or tooling the user did not ask for.

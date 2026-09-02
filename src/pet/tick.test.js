@@ -4,16 +4,15 @@ const { createInitialState } = require('./state');
 const { tick, deriveMood } = require('./tick');
 
 function fresh(overrides = {}) {
-  return { ...createInitialState(), ...overrides, lastTickAt: 1 };
+  return { ...createInitialState(), lastTickAt: 1, ...overrides };
 }
 
 test('hunger rises over time and happiness decays while ignored', () => {
   const s = fresh({ lastActivity: 1 });
-  const fiveMin = 5 * 60 * 1000;
-  const { state } = tick(s, { now: fiveMin, idleSeconds: 0 });
-  assert.strictEqual(state.hunger, 41); // 40 + 1
-  // 5 min ignored → -1/6 happiness, rounds to 69
-  assert.ok(state.happiness < 70);
+  const tenMin = 10 * 60 * 1000;
+  const { state } = tick(s, { now: tenMin, idleSeconds: 0 });
+  assert.strictEqual(state.hunger, 42); // 40 + 2
+  assert.strictEqual(state.happiness, 69); // 70 - 1
 });
 
 test('idle 5+ minutes makes pet sleepy', () => {
@@ -54,7 +53,25 @@ test('deriveMood reflects stats', () => {
   assert.strictEqual(deriveMood(u), 'joyful');
   const v = fresh({ happiness: 20 });
   assert.strictEqual(deriveMood(v), 'grumpy');
+  assert.strictEqual(deriveMood(fresh({ state: 'angry' })), 'annoyed');
+  assert.strictEqual(deriveMood(fresh({ state: 'sad' })), 'sad');
   assert.strictEqual(deriveMood(fresh()), 'content');
+});
+
+test('hungry line only fires when crossing the threshold', () => {
+  const crossing = fresh({ hunger: 84, lastTickAt: 0 });
+  const first = tick(crossing, { now: 5 * 60 * 1000, idleSeconds: 0 });
+  assert.ok(first.state.hunger >= 85);
+  assert.ok(first.message);
+  const second = tick(first.state, { now: 10 * 60 * 1000, idleSeconds: 0 });
+  assert.strictEqual(second.message, null);
+});
+
+test('long ignore with low happiness makes the pet angry', () => {
+  const s = fresh({ happiness: 30, lastActivity: 1 });
+  const { state } = tick(s, { now: 10 * 60 * 1000, idleSeconds: 0 });
+  assert.strictEqual(state.state, 'angry');
+  assert.strictEqual(state.mood, 'annoyed');
 });
 
 test('tick does not mutate input state', () => {

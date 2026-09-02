@@ -12,9 +12,21 @@ const STATES = {
   thinking: 'thinking',
   celebrating: 'celebrating',
   curious: 'curious',
+  walking: 'walking',
 };
 
 const CLAMP = (v) => Math.max(0, Math.min(100, v));
+
+// Short-lived reactions that should settle back to idle on their own.
+const REACTION_STATES = new Set([
+  STATES.happy,
+  STATES.excited,
+  STATES.sad,
+  STATES.eating,
+  STATES.celebrating,
+  STATES.curious,
+  STATES.thinking,
+]);
 
 function createInitialState() {
   return {
@@ -28,8 +40,15 @@ function createInitialState() {
     state: STATES.idle,
     // Timestamps (ms) used by the "feel alive" decay loops.
     lastActivity: Date.now(),
+    lastTickAt: Date.now(),
+    lastEventAt: {},
     consecutiveFailures: 0,
     lastWokeUp: Date.now(),
+    facing: 1,
+    hatchedAt: 0,
+    lastGreetingDay: null,
+    memories: [],
+    dayStats: { day: '', commits: 0, pushes: 0, builds: 0, tests: 0, failures: 0, pets: 0, feeds: 0 },
   };
 }
 
@@ -44,6 +63,8 @@ function xpForLevel(level) {
 
 module.exports = {
   STATES,
+  REACTION_STATES,
+  CLAMP,
   createInitialState,
   clone,
   xpForLevel,

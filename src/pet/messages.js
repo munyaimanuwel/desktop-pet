@@ -67,15 +67,28 @@ const LINES = {
     'Rise and shine… who? Me.',
     'Just woke up. What did I miss?',
   ],
+  WELCOME: [
+    "I'm here now. Try not to break the build.",
+    'Hatched. I live on this desk now.',
+  ],
+  DAILY_GREETING: [
+    'Morning. The compiler missed you.',
+    'Another day. I already live here.',
+    'You are back. I kept the chair warm.',
+  ],
 };
 
 const counters = new Map();
-function messageFor(event) {
+function messageFor(event, ctx = {}) {
   const lines = LINES[event];
   if (!lines || lines.length === 0) return null;
   const i = counters.get(event) || 0;
   counters.set(event, i + 1);
-  return lines[i % lines.length];
+  let line = lines[i % lines.length];
+  if (ctx.name && event === 'WELCOME') {
+    line = `I'm ${ctx.name}. I'll be here.`;
+  }
+  return line;
 }
 
 module.exports = { messageFor, LINES };

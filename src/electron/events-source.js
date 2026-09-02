@@ -18,9 +18,10 @@ const ALLOWED = new Set([
 
 function start({ onEvent, repoDir = process.cwd(), log = console } = {}) {
   let headHash = null;
+  let cwd = repoDir || process.cwd();
 
   const poll = () => {
-    execFile('git', ['rev-parse', 'HEAD'], { cwd: repoDir }, (err, stdout) => {
+    execFile('git', ['rev-parse', 'HEAD'], { cwd }, (err, stdout) => {
       if (err) return; // not a git repo (yet) — keep polling
       const hash = stdout.trim();
       if (headHash && hash && hash !== headHash) onEvent('COMMIT');
@@ -65,6 +66,11 @@ function start({ onEvent, repoDir = process.cwd(), log = console } = {}) {
     stop() {
       clearInterval(pollTimer);
       server.close();
+    },
+    setRepoDir(dir) {
+      cwd = dir || process.cwd();
+      headHash = null;
+      poll();
     },
   };
 }

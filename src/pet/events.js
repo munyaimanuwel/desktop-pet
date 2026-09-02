@@ -1,7 +1,9 @@
 // Deterministic reactions to developer events.
 // Pure arithmetic on pet state — no LLM, no I/O.
-const { clone, xpForLevel } = require('./state');
+const { clone, xpForLevel, CLAMP } = require('./state');
 const { messageFor } = require('./messages');
+const { deriveMood } = require('./tick');
+const { remember, recallLine } = require('./memory');
 
 const COOLDOWN_MS = 60 * 1000;
 
@@ -33,8 +35,6 @@ const EVENT_EFFECTS = {
   PET: { xp: 0, happiness: 4 },
 };
 
-const CLAMP = (v) => Math.max(0, Math.min(100, v));
-
 const FAILURE_EVENTS = new Set(['BUILD_FAILURE', 'TEST_FAILURE', 'MULTIPLE_FAILURES']);
 
 // Apply an event to a clone of the state. Returns { state, message, applied }.
@@ -48,7 +48,9 @@ function applyEvent(state, event, opts = {}) {
     next.consecutiveFailures = state.consecutiveFailures;
     next.happiness = CLAMP(state.happiness + EVENT_EFFECTS.MULTIPLE_FAILURES.happiness);
     next.lastActivity = now;
-    return { state: next, message: messageFor(event), applied: true };
+    Object.assign(next, remember(next, event, now));
+    next.mood = deriveMood(next);
+    return { state: next, message: messageFor(event, next), messageEvent: event, applied: true };
   }
 
   const effect = EVENT_EFFECTS[event];
@@ -79,17 +81,26 @@ function applyEvent(state, event, opts = {}) {
   }
   next.lastActivity = now;
   next.lastEventAt = { ...(state.lastEventAt || {}), [event]: now };
+  Object.assign(next, remember(next, event, now));
 
   // Level-up check after any XP gain.
-  let message = messageFor(event);
+  let messageEvent = event;
+  let message = messageFor(event, next);
   if (next.xp >= xpForLevel(next.level)) {
     next.xp -= xpForLevel(next.level);
     next.level += 1;
     next.state = 'celebrating';
-    message = messageFor('LEVEL_UP');
+    messageEvent = 'LEVEL_UP';
+    message = messageFor('LEVEL_UP', next);
+  } else if (event === 'COMMIT' || event === 'PUSH') {
+    const recall = recallLine(next);
+    if (recall && next.dayStats && (next.dayStats.commits === 5 || next.dayStats.pushes === 2)) {
+      message = recall;
+    }
   }
 
-  return { state: next, message, applied: true };
+  next.mood = deriveMood(next);
+  return { state: next, message, messageEvent, applied: true };
 }
 
 module.exports = { applyEvent, COOLDOWN_MS };

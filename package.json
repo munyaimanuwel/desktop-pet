@@ -3,23 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "description": "A small AI-powered desktop pet that lives on your desktop while you work.",
+  "author": "Pip",
   "main": "src/electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env ELECTRON_START_URL=http://localhost:3000 electron\"",
+    "start": "cross-env NODE_ENV=production electron .",
+    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:3000 electron .\"",
     "electron:prod": "npm run build && cross-env NODE_ENV=production electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
+    "pack": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir --publish never",
+    "dist": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish never",
     "test": "node --test \"src/pet/*.test.js\"",
     "pet": "node scripts/pet.js",
     "hooks:install": "node scripts/install-hooks.js"
-  },
-  "dependencies": {
-    "next": "^14.2.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
@@ -31,6 +27,9 @@
     "electron-builder": "^24.13.3",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.35",
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.4.5",
     "wait-on": "^7.2.0"
   },
@@ -39,14 +38,19 @@
     "productName": "Desktop Pet",
     "files": [
       "out/**/*",
-      "src/electron/**/*"
+      "src/electron/**/*",
+      "src/pet/**/*",
+      "!src/pet/**/*.test.js",
+      "!**/node_modules/**"
     ],
     "directories": {
       "output": "release"
     },
+    "publish": [],
     "win": {
       "target": "nsis",
-      "icon": "public/icon.ico"
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
     }
   },
   "allowScripts": {

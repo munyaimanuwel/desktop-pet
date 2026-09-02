@@ -31,6 +31,16 @@ body {
   height: 100vh;
   padding: 12px;
   gap: 8px;
+  pointer-events: none;
+}
+
+.hitbox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
 }
 
 /* ---------- Pet ---------- */
@@ -50,17 +60,63 @@ body {
   cursor: grabbing;
 }
 
-.pet-body {
+.pet-facing,
+.pet-figure {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pet--left .pet-facing {
+  transform: scaleX(-1);
+}
+
+.pet-foot {
+  fill: #5b4cdb;
+}
+
+.pet-body,
+.pet-ear {
   fill: var(--pet-body);
   transition: fill 0.3s ease;
 }
 
-.pet:hover .pet-body {
+.pet-ear-inner {
+  fill: #c4b5fd;
+}
+
+.pet-shine {
+  fill: rgba(255, 255, 255, 0.45);
+}
+
+.pet:hover .pet-body,
+.pet:hover .pet-ear {
   fill: var(--pet-body-light);
 }
 
 .pet-eye {
   fill: var(--pet-dark);
+}
+
+.pet-eye-shine {
+  fill: #fff;
+}
+
+.pet-eye-closed {
+  fill: none;
+  stroke: var(--pet-dark);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.pet-brow {
+  fill: none;
+  stroke: var(--pet-dark);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.pet-blush {
+  fill: rgba(255, 118, 117, 0.55);
 }
 
 .pet-mouth {
@@ -89,36 +145,57 @@ body {
   animation: float-up 2s ease-in-out infinite;
 }
 
-/* State animations */
-.pet--idle .pet-body {
+/* State animations — the whole figure moves, not just the fill. */
+.pet--idle .pet-figure {
   animation: bob 3s ease-in-out infinite;
 }
-.pet--happy .pet-body,
-.pet--excited .pet-body {
+.pet--happy .pet-figure,
+.pet--excited .pet-figure {
   animation: wiggle 0.6s ease-in-out infinite;
 }
-.pet--celebrating .pet-body {
+.pet--celebrating .pet-figure {
   animation: bounce 0.7s ease-in-out infinite;
 }
-.pet--sad .pet-body {
+.pet--sad .pet-figure {
   animation: droop 4s ease-in-out infinite;
 }
-.pet--angry .pet-body {
+.pet--angry .pet-figure {
   animation: shake 0.4s ease-in-out infinite;
 }
-.pet--sleepy .pet-body,
-.pet--sleeping .pet-body {
+.pet--sleepy .pet-figure,
+.pet--sleeping .pet-figure {
   animation: slow-breathe 3.5s ease-in-out infinite;
-  opacity: 0.85;
 }
-.pet--eating .pet-body {
+.pet--sleepy,
+.pet--sleeping {
+  opacity: 0.9;
+}
+.pet--eating .pet-figure {
   animation: chomp 0.5s ease-in-out infinite;
 }
-.pet--curious .pet-body {
+.pet--curious .pet-figure {
   animation: tilt 2.5s ease-in-out infinite;
 }
-.pet--thinking .pet-body {
+.pet--thinking .pet-figure {
   animation: tilt 2.5s ease-in-out infinite reverse;
+}
+.pet--walking .pet-figure {
+  animation: walk-bob 0.35s ease-in-out infinite;
+}
+.pet--walking .pet-foot--l {
+  animation: step 0.35s ease-in-out infinite;
+}
+.pet--walking .pet-foot--r {
+  animation: step 0.35s ease-in-out infinite reverse;
+}
+
+.pet-thought {
+  fill: var(--pet-dark);
+  opacity: 0.7;
+}
+.pet-sparkles {
+  fill: #fdcb6e;
+  animation: twinkle 0.7s ease-in-out infinite;
 }
 
 @keyframes bob {
@@ -159,6 +236,18 @@ body {
   0% { transform: translateY(6px); opacity: 0; }
   40% { opacity: 1; }
   100% { transform: translateY(-14px); opacity: 0; }
+}
+@keyframes walk-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes step {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
 }
 
 /* ---------- Speech bubble ---------- */
@@ -208,19 +297,23 @@ body {
   position: absolute;
   bottom: 8px;
   right: 8px;
+  z-index: 2;
   background: var(--hud-bg);
   color: #fff;
   border-radius: 10px;
   padding: 10px;
-  width: 168px;
+  width: 196px;
+  max-height: 340px;
+  overflow-y: auto;
   opacity: 0;
   pointer-events: none;
   transform: translateY(6px);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.stage:hover .hud,
-.pet:hover + .hud {
+.hitbox:hover .hud,
+.pet:hover + .hud,
+.hud--pinned {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -276,19 +369,71 @@ body {
 .hud-bar-fill--energy { background: #55efc4; }
 .hud-bar-fill--hunger { background: #ff7675; }
 
-.hud-feed {
+.hud-actions {
+  display: flex;
+  gap: 6px;
   margin-top: 6px;
-  width: 100%;
+}
+
+.hud-feed,
+.hud-gear {
+  flex: 1;
   border: none;
   border-radius: 6px;
   padding: 4px 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   background: var(--pet-body-light);
   color: #fff;
   cursor: pointer;
 }
 
-.hud-feed:hover {
+.hud-gear {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.hud-feed:hover,
+.hud-gear:hover {
   filter: brightness(1.1);
+}
+
+.hud-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hud-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  opacity: 0.95;
+}
+
+.hud-settings input,
+.hud-settings select {
+  border: none;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.hud-settings input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hud-check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+}
+
+.hud-check input {
+  width: auto;
 }

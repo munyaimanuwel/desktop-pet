@@ -1,23 +1,29 @@
 // Minimal, safe bridge between the static renderer and the Electron main process.
-// The renderer runs in an opaque context, so only intents cross this boundary.
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('petAPI', {
-  // Read the current pet state (once, at mount).
   getState: () => ipcRenderer.invoke('pet:getState'),
-  // Subscribe to state pushes. Returns an unsubscribe function.
+  getSettings: () => ipcRenderer.invoke('pet:getSettings'),
+  setSettings: (patch) => ipcRenderer.send('pet:setSettings', patch),
   onState: (fn) => {
-    const listener = (_, state) => fn(state);
+    const listener = (_, payload) => fn(payload);
     ipcRenderer.on('pet:state', listener);
     return () => ipcRenderer.removeListener('pet:state', listener);
   },
-  // Send a user intent from the UI.
+  onSettings: (fn) => {
+    const listener = (_, settings) => fn(settings);
+    ipcRenderer.on('pet:settings', listener);
+    return () => ipcRenderer.removeListener('pet:settings', listener);
+  },
   sendIntent: (type) => ipcRenderer.send('pet:intent', type),
-  // Move the window by a [dx, dy] delta (called while dragging the pet).
-  drag: (offset) => ipcRenderer.send('pet:drag', offset),
-  // Window controls.
+  dragStart: (offset) => ipcRenderer.send('pet:dragStart', offset),
+  dragMove: () => ipcRenderer.send('pet:dragMove'),
+  dragEnd: () => ipcRenderer.send('pet:dragEnd'),
   toggleHide: () => ipcRenderer.send('pet:toggleHide'),
   show: () => ipcRenderer.send('pet:show'),
   hide: () => ipcRenderer.send('pet:hide'),
+  setMouseIgnore: (ignore) => ipcRenderer.send('pet:mouseIgnore', ignore),
+  setHover: (on) => ipcRenderer.send('pet:hover', on),
+  openMenu: () => ipcRenderer.send('pet:menu'),
   onToggleHide: (fn) => ipcRenderer.on('pet:toggleHide', (_, v) => fn(v)),
 });

@@ -173,3 +173,16 @@ LONG IDLE
 
 RETURN FROM IDLE
 → greeting
+```
+
+---
+
+# 4. v2
+
+v1 is shipped in this repo. v2 is specified in `docs/v2.md`.
+
+**2.0 (next shippable tag):** Pip walks the work-area floor and hops displays; a VS Code/Cursor extension POSTs build/test events to the existing localhost server. No chat UI.
+
+**2.1 (later):** sprite sheet, local journal facts, rarer optional AI, signed Windows / macOS / auto-update.
+
+If this file and `docs/v2.md` disagree on v2 scope, prefer `docs/v2.md`. Product principles in §2 still apply.

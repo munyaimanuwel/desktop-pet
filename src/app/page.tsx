@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Pet from '../components/Pet';
 import SpeechBubble from '../components/SpeechBubble';
 import HUD from '../components/HUD';
-import type { PetState } from '../types/pet-api';
+import type { PetSettings, PetState } from '../types/pet-api';
 
 const FALLBACK_STATE: PetState = {
   name: 'Pip',
@@ -18,39 +18,76 @@ const FALLBACK_STATE: PetState = {
   lastActivity: Date.now(),
   consecutiveFailures: 0,
   lastWokeUp: Date.now(),
+  facing: 1,
+};
+
+const FALLBACK_SETTINGS: PetSettings = {
+  name: 'Pip',
+  roam: true,
+  speech: 'normal',
+  alwaysOnTop: true,
+  launchAtLogin: false,
+  repoDir: '',
+  hasApiKey: false,
 };
 
 export default function Home() {
   const [state, setState] = useState<PetState>(FALLBACK_STATE);
+  const [settings, setSettings] = useState<PetSettings>(FALLBACK_SETTINGS);
   const [message, setMessage] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [hudOpen, setHudOpen] = useState(false);
 
   useEffect(() => {
-    // Outside Electron (plain browser) the bridge is absent — show the fallback.
     if (!window.petAPI) return;
 
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     window.petAPI.getState().then(setState);
-    const unsubscribe = window.petAPI.onState(({ state, message }) => {
+    window.petAPI.getSettings().then(setSettings);
+    const unsubState = window.petAPI.onState(({ state, message, settings }) => {
       setState(state);
+      if (settings) setSettings(settings);
       if (message) {
         setMessage(message);
-        const t = setTimeout(() => setMessage(null), 6000);
-        return () => clearTimeout(t);
+        clearTimeout(timeout);
+        timeout = setTimeout(() => setMessage(null), 6000);
       }
     });
-    return unsubscribe;
+    const unsubSettings = window.petAPI.onSettings(setSettings);
+    return () => {
+      clearTimeout(timeout);
+      unsubState();
+      unsubSettings();
+    };
   }, []);
 
-  // Pet clicks and the feed button map to intents.
   const pet = () => window.petAPI?.sendIntent('pet');
   const feed = () => window.petAPI?.sendIntent('feed');
 
+  const onHitEnter = useCallback(() => {
+    window.petAPI?.setMouseIgnore(false);
+    window.petAPI?.setHover(true);
+  }, []);
+
+  const onHitLeave = useCallback(() => {
+    if (dragging || hudOpen) return;
+    window.petAPI?.setHover(false);
+    window.petAPI?.setMouseIgnore(true);
+  }, [dragging, hudOpen]);
+
   return (
     <main className="stage">
-      <div className="speech-slot">
-        {message && <SpeechBubble text={message} />}
+      <div className="hitbox" onMouseEnter={onHitEnter} onMouseLeave={onHitLeave}>
+        <div className="speech-slot">{message && <SpeechBubble text={message} />}</div>
+        <Pet state={state} onClick={pet} onDragChange={setDragging} />
+        <HUD
+          state={state}
+          settings={settings}
+          pinned={hudOpen}
+          onFeed={feed}
+          onPinnedChange={setHudOpen}
+        />
       </div>
-      <Pet state={state} onClick={pet} />
-      <HUD state={state} onFeed={feed} />
     </main>
   );
 }

@@ -1,6 +1,6 @@
 # AI Desktop Pet
 
-A small AI-powered companion that lives on your desktop while you work.
+A small companion that lives on your desktop while you work.
 
 The pet is not a chatbot. It is a persistent digital creature that notices you: your commits, your builds, your idle stretches, and the quiet in between.
 
@@ -8,17 +8,60 @@ The pet is not a chatbot. It is a persistent digital creature that notices you: 
 
 ## What it does
 
-- Lives in a small always-on-top window
+- Lives in a small always-on-top window (Pip, a purple blob)
+- Wanders along your desktop, blinks, and faces the way it is walking
 - Has mood, needs, XP, and a level
+- Remembers today's work and talks about it once in a while
 - Reacts to developer activity (git, builds, tests, idle time)
-- Animates between states instead of sitting still
-- Speaks up only occasionally, and only when it is worth it
+- Speaks up only occasionally — quiet and off modes if you need focus
+- Hides in the system tray (`Ctrl+Shift+P` to show/hide)
+- Optional AI one-liners for rare moments (level-up, a pile of failures, good morning)
 
-## Status
+## Run it
 
-Early planning. Implementation has not started.
+```bash
+npm install
+npm test
+npm run electron:dev
+```
 
-See `project.md` for the product spec and `AGENTS.md` for how coding agents should work in this repo.
+`electron:dev` starts the Next.js renderer and opens the frameless pet window.
+
+```bash
+npm run electron:prod   # packaged renderer, no Next dev server
+npm run dist            # Windows installer in release/
+```
+
+## Using Pip
+
+- **Click** to pet · **Drag** to move · **Hover** for stats
+- **Feed** from the hover panel or the tray
+- **Settings** on the hover panel: name, wander, speech, always-on-top, start at login, repo to watch
+- **Right-click** or the tray icon for hide / feed / wander / speech / quit
+- **Ctrl+Shift+P** shows or hides the window
+
+State lives in Electron's userData directory (`pet.json` and `settings.json`).
+
+## Feed it events
+
+The pet watches `git rev-parse HEAD` in the current working directory (or the repo you set in Settings).
+
+From any other repo, ping the local event server:
+
+```bash
+npm run pet -- commit
+npm run pet -- push
+npm run pet -- build-success
+npm run pet -- build-failure
+npm run pet -- test-success
+npm run pet -- test-failure
+```
+
+Optional git hooks in this repo: `npm run hooks:install`
+
+## Optional AI
+
+Most behaviour is deterministic. If you set `XAI_API_KEY` (env, `.env`, or Settings), Pip may generate a short line for level-ups, repeated failures, and the morning greeting. If the request is slow or missing, the canned line is used.
 
 ## Principles
 
@@ -26,4 +69,14 @@ See `project.md` for the product spec and `AGENTS.md` for how coding agents shou
 
 **Small and fun.** Local storage, few dependencies, no extra infrastructure.
 
-**Feels alive.** Idle, happy, sleepy, celebrating, and the rest should read on the creature, not only in a status field.
+**Feels alive.** Idle, happy, sleepy, celebrating, walking, and the rest should read on the creature, not only in a status field.
+
+See `project.md` for the product spec, `docs/v2.md` for the v2 plan, and `AGENTS.md` for how coding agents should work in this repo.
+
+## Next version
+
+v1 is a creature that lives here. v2 is a creature that has a life with you.
+
+The shippable **2.0** cut is: walk the taskbar (and hop monitors), plus a VS Code/Cursor extension so builds and tests arrive without a CLI. Sprite sheet, journal, signed/macOS builds, and rarer AI are **2.1**.
+
+Full design, decisions, and PR order: [`docs/v2.md`](docs/v2.md).

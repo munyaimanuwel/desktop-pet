@@ -14,7 +14,10 @@ test('COMMIT grants XP, happiness, and happy state', () => {
   assert.strictEqual(state.xp, 25);
   assert.strictEqual(state.happiness, 75);
   assert.strictEqual(state.state, 'happy');
+  assert.strictEqual(state.mood, 'joyful');
   assert.strictEqual(state.lastActivity, 1000);
+  assert.strictEqual(state.dayStats.commits, 1);
+  assert.strictEqual(state.memories.length, 1);
 });
 
 test('BUILD_FAILURE reduces happiness and increments consecutiveFailures', () => {
@@ -35,6 +38,7 @@ test('MULTIPLE_FAILURES sets angry state with message', () => {
   const s = fresh({ consecutiveFailures: 3 });
   const { state, message } = applyEvent(s, 'MULTIPLE_FAILURES', { now: 1000 });
   assert.strictEqual(state.state, 'angry');
+  assert.strictEqual(state.mood, 'annoyed');
   assert.ok(message);
 });
 
