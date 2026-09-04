@@ -408,7 +408,14 @@ app.whenReady().then(() => {
   ipcMain.on('pet:menu', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.setIgnoreMouseEvents(false);
-    buildMenu().popup({ window: mainWindow });
+    buildMenu().popup({
+      window: mainWindow,
+      callback: () => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        // Keep the transparent window click-through when the cursor left during the menu.
+        if (!hovering) mainWindow.setIgnoreMouseEvents(true, { forward: true });
+      },
+    });
   });
   ipcMain.on('pet:dragStart', (_e, offset) => {
     if (roam) roam.pause();
