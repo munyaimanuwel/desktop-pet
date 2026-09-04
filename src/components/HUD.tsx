@@ -37,6 +37,11 @@ export default function HUD({
         </span>
         <span className="hud-mood">{state.mood}</span>
       </div>
+      {state.lastEvent && (
+        <div className="hud-row">
+          <span className="hud-mood">last: {state.lastEvent}</span>
+        </div>
+      )}
       <Bar label="XP" value={state.xp} max={Math.max(1, state.level * 100)} accent="xp" />
       <Bar label="Happy" value={state.happiness} max={100} accent="happy" />
       <Bar label="Energy" value={state.energy} max={100} accent="energy" />
