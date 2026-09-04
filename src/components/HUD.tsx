@@ -95,6 +95,14 @@ export default function HUD({
           <label className="hud-check">
             <input
               type="checkbox"
+              checked={settings.clickThrough !== false}
+              onChange={(e) => save({ clickThrough: e.target.checked })}
+            />
+            Click-through when not hovering
+          </label>
+          <label className="hud-check">
+            <input
+              type="checkbox"
               checked={settings.launchAtLogin}
               onChange={(e) => save({ launchAtLogin: e.target.checked })}
             />

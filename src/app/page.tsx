@@ -26,6 +26,7 @@ const FALLBACK_SETTINGS: PetSettings = {
   roam: true,
   speech: 'normal',
   alwaysOnTop: true,
+  clickThrough: true,
   launchAtLogin: false,
   repoDir: '',
   hasApiKey: false,
@@ -72,8 +73,8 @@ export default function Home() {
   const onHitLeave = useCallback(() => {
     if (dragging || hudOpen) return;
     window.petAPI?.setHover(false);
-    window.petAPI?.setMouseIgnore(true);
-  }, [dragging, hudOpen]);
+    if (settings.clickThrough !== false) window.petAPI?.setMouseIgnore(true);
+  }, [dragging, hudOpen, settings.clickThrough]);
 
   return (
     <main className="stage">
