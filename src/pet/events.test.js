@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { createInitialState } = require('./state');
+const { createInitialState, REACTION_STATES } = require('./state');
 const { applyEvent, COOLDOWN_MS } = require('./events');
 
 function fresh(overrides = {}) {
@@ -16,6 +16,8 @@ test('COMMIT grants XP, happiness, and happy state', () => {
   assert.strictEqual(state.state, 'happy');
   assert.strictEqual(state.mood, 'joyful');
   assert.strictEqual(state.lastActivity, 1000);
+  assert.strictEqual(state.lastEvent, 'COMMIT');
+  assert.strictEqual(state.lastEventAt.COMMIT, 1000);
   assert.strictEqual(state.dayStats.commits, 1);
   assert.strictEqual(state.memories.length, 1);
 });
@@ -26,19 +28,33 @@ test('BUILD_FAILURE reduces happiness and increments consecutiveFailures', () =>
   assert.strictEqual(state.happiness, 60);
   assert.strictEqual(state.consecutiveFailures, 1);
   assert.strictEqual(state.state, 'sad');
+  assert.strictEqual(state.lastEvent, 'BUILD_FAILURE');
+});
+
+test('TEST_SUCCESS grants XP and resets consecutiveFailures', () => {
+  const s = fresh({ consecutiveFailures: 2 });
+  const { state } = applyEvent(s, 'TEST_SUCCESS', { now: 1000 });
+  assert.strictEqual(state.xp, 15);
+  assert.strictEqual(state.consecutiveFailures, 0);
+  assert.strictEqual(state.state, 'happy');
+  assert.strictEqual(state.lastEvent, 'TEST_SUCCESS');
 });
 
 test('BUILD_SUCCESS resets consecutiveFailures', () => {
   const s = fresh({ consecutiveFailures: 2 });
   const { state } = applyEvent(s, 'BUILD_SUCCESS', { now: 1000 });
   assert.strictEqual(state.consecutiveFailures, 0);
+  assert.strictEqual(state.lastEvent, 'BUILD_SUCCESS');
 });
 
-test('MULTIPLE_FAILURES sets angry state with message', () => {
+test('MULTIPLE_FAILURES sets angry state with message and lastEvent', () => {
   const s = fresh({ consecutiveFailures: 3 });
   const { state, message } = applyEvent(s, 'MULTIPLE_FAILURES', { now: 1000 });
   assert.strictEqual(state.state, 'angry');
   assert.strictEqual(state.mood, 'annoyed');
+  assert.strictEqual(state.lastEvent, 'MULTIPLE_FAILURES');
+  assert.strictEqual(state.lastEventAt.MULTIPLE_FAILURES, 1000);
+  assert.ok(REACTION_STATES.has('angry'));
   assert.ok(message);
 });
 
@@ -79,7 +95,7 @@ test('unknown event is ignored', () => {
   const { applied, message } = applyEvent(s, 'NOPE', { now: 1000 });
   assert.strictEqual(applied, false);
   assert.strictEqual(message, null);
-  assert.strictEqual(s.happiness, s.state.happiness ? s.happiness : 70);
+  assert.strictEqual(s.happiness, 70);
 });
 
 test('state is not mutated by applyEvent', () => {
