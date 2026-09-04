@@ -37,6 +37,7 @@ function normalize(raw) {
   merged.lastWokeUp = finite(merged.lastWokeUp, base.lastWokeUp);
   merged.consecutiveFailures = Math.max(0, Math.floor(finite(merged.consecutiveFailures, 0)));
   merged.lastEventAt = merged.lastEventAt && typeof merged.lastEventAt === 'object' ? merged.lastEventAt : {};
+  merged.lastEvent = typeof merged.lastEvent === 'string' && merged.lastEvent ? merged.lastEvent : null;
   merged.facing = merged.facing === -1 ? -1 : 1;
   merged.hatchedAt = finite(merged.hatchedAt, 0);
   if (!merged.hatchedAt && raw && finite(raw.lastActivity, 0)) merged.hatchedAt = raw.lastActivity;
