@@ -43,7 +43,6 @@ function createInitialState() {
     lastActivity: Date.now(),
     lastTickAt: Date.now(),
     lastEventAt: {},
-    lastEvent: null,
     consecutiveFailures: 0,
     lastWokeUp: Date.now(),
     facing: 1,
