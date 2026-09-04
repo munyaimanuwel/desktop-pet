@@ -48,6 +48,8 @@ function applyEvent(state, event, opts = {}) {
     next.consecutiveFailures = state.consecutiveFailures;
     next.happiness = CLAMP(state.happiness + EVENT_EFFECTS.MULTIPLE_FAILURES.happiness);
     next.lastActivity = now;
+    next.lastEvent = event;
+    next.lastEventAt = { ...(state.lastEventAt || {}), [event]: now };
     Object.assign(next, remember(next, event, now));
     next.mood = deriveMood(next);
     return { state: next, message: messageFor(event, next), messageEvent: event, applied: true };
@@ -80,6 +82,7 @@ function applyEvent(state, event, opts = {}) {
     next.state = EVENT_STATE[event];
   }
   next.lastActivity = now;
+  next.lastEvent = event;
   next.lastEventAt = { ...(state.lastEventAt || {}), [event]: now };
   Object.assign(next, remember(next, event, now));
 
@@ -103,4 +106,4 @@ function applyEvent(state, event, opts = {}) {
   return { state: next, message, messageEvent, applied: true };
 }
 
-module.exports = { applyEvent, COOLDOWN_MS };
+module.exports = { applyEvent, COOLDOWN_MS, EVENT_EFFECTS, EVENT_STATE };
