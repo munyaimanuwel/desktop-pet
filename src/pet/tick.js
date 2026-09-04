@@ -66,6 +66,8 @@ function tick(state, { now = Date.now(), idleSeconds = 0 } = {}) {
 
   // State transitions. Sleep wins when the user is away; otherwise low energy
   // trumps hunger (an exhausted pet sleeps, a hungry one just complains).
+  // Sustained low happiness stays idle with a grumpy mood — the angry face is
+  // reserved for short MULTIPLE_FAILURES reactions that settle via REACTION_STATES.
   let message = null;
   if (idleSeconds >= IDLE_SLEEPING_S && next.state !== 'sleeping') {
     next.state = 'sleeping';
@@ -76,8 +78,6 @@ function tick(state, { now = Date.now(), idleSeconds = 0 } = {}) {
   } else if (next.energy < LOW_ENERGY && next.state === 'idle') {
     next.state = 'sleepy';
     message = messageFor('FALLING_ASLEEP');
-  } else if (next.happiness <= GRUMPY_HAPPINESS && next.state === 'idle') {
-    next.state = 'angry';
   } else if (next.hunger >= HUNGRY_THRESHOLD && next.state === 'idle' && !wasHungry) {
     message = messageFor('HUNGRY');
   }

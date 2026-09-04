@@ -230,6 +230,20 @@ function applyAlwaysOnTop() {
   else mainWindow.setAlwaysOnTop(false);
 }
 
+function clickThroughEnabled() {
+  return !settings || settings.clickThrough !== false;
+}
+
+function applyClickThrough() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!clickThroughEnabled()) {
+    mainWindow.setIgnoreMouseEvents(false);
+    return;
+  }
+  // Pass through when not hovering; hover IPC re-enables hits on the pet.
+  mainWindow.setIgnoreMouseEvents(!hovering, { forward: true });
+}
+
 function applySettings(patch) {
   const next = { ...settings, ...patch };
   if (patch && Object.prototype.hasOwnProperty.call(patch, 'apiKey')) {
@@ -242,6 +256,7 @@ function applySettings(patch) {
     broadcast();
   }
   applyAlwaysOnTop();
+  applyClickThrough();
   try {
     app.setLoginItemSettings({ openAtLogin: Boolean(settings.launchAtLogin) });
   } catch (err) {
@@ -276,6 +291,12 @@ function buildMenu() {
       ],
     },
     { label: 'Always on top', type: 'checkbox', checked: !!(settings && settings.alwaysOnTop), click: (item) => applySettings({ alwaysOnTop: item.checked }) },
+    {
+      label: 'Click-through',
+      type: 'checkbox',
+      checked: clickThroughEnabled(),
+      click: (item) => applySettings({ clickThrough: item.checked }),
+    },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },
   ]);
@@ -326,7 +347,7 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    applyClickThrough();
     setTimeout(() => greetIfNeeded(0), 600);
   });
 
@@ -397,6 +418,10 @@ app.whenReady().then(() => {
   ipcMain.on('pet:hide', () => setHidden(true));
   ipcMain.on('pet:mouseIgnore', (_e, ignore) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!clickThroughEnabled()) {
+      mainWindow.setIgnoreMouseEvents(false);
+      return;
+    }
     mainWindow.setIgnoreMouseEvents(!!ignore, { forward: true });
   });
   ipcMain.on('pet:hover', (_e, on) => {
@@ -408,7 +433,10 @@ app.whenReady().then(() => {
   ipcMain.on('pet:menu', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.setIgnoreMouseEvents(false);
-    buildMenu().popup({ window: mainWindow });
+    buildMenu().popup({
+      window: mainWindow,
+      callback: () => applyClickThrough(),
+    });
   });
   ipcMain.on('pet:dragStart', (_e, offset) => {
     if (roam) roam.pause();

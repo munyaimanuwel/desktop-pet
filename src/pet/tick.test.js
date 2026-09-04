@@ -67,11 +67,11 @@ test('hungry line only fires when crossing the threshold', () => {
   assert.strictEqual(second.message, null);
 });
 
-test('long ignore with low happiness makes the pet angry', () => {
+test('long ignore with low happiness stays idle but becomes grumpy', () => {
   const s = fresh({ happiness: 30, lastActivity: 1 });
   const { state } = tick(s, { now: 10 * 60 * 1000, idleSeconds: 0 });
-  assert.strictEqual(state.state, 'angry');
-  assert.strictEqual(state.mood, 'annoyed');
+  assert.strictEqual(state.state, 'idle');
+  assert.strictEqual(state.mood, 'grumpy');
 });
 
 test('tick does not mutate input state', () => {

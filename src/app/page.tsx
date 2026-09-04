@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Pet from '../components/Pet';
 import SpeechBubble from '../components/SpeechBubble';
 import HUD from '../components/HUD';
@@ -19,6 +19,7 @@ const FALLBACK_STATE: PetState = {
   consecutiveFailures: 0,
   lastWokeUp: Date.now(),
   facing: 1,
+  lastEvent: null,
 };
 
 const FALLBACK_SETTINGS: PetSettings = {
@@ -26,6 +27,7 @@ const FALLBACK_SETTINGS: PetSettings = {
   roam: true,
   speech: 'normal',
   alwaysOnTop: true,
+  clickThrough: true,
   launchAtLogin: false,
   repoDir: '',
   hasApiKey: false,
@@ -37,6 +39,7 @@ export default function Home() {
   const [message, setMessage] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [hudOpen, setHudOpen] = useState(false);
+  const hovering = useRef(false);
 
   useEffect(() => {
     if (!window.petAPI) return;
@@ -61,19 +64,29 @@ export default function Home() {
     };
   }, []);
 
+  // Restore click-through when settings close or drag ends while pointer is outside.
+  useEffect(() => {
+    if (hudOpen || dragging || hovering.current) return;
+    if (settings.clickThrough === false) return;
+    window.petAPI?.setHover(false);
+    window.petAPI?.setMouseIgnore(true);
+  }, [hudOpen, dragging, settings.clickThrough]);
+
   const pet = () => window.petAPI?.sendIntent('pet');
   const feed = () => window.petAPI?.sendIntent('feed');
 
   const onHitEnter = useCallback(() => {
+    hovering.current = true;
     window.petAPI?.setMouseIgnore(false);
     window.petAPI?.setHover(true);
   }, []);
 
   const onHitLeave = useCallback(() => {
+    hovering.current = false;
     if (dragging || hudOpen) return;
     window.petAPI?.setHover(false);
-    window.petAPI?.setMouseIgnore(true);
-  }, [dragging, hudOpen]);
+    if (settings.clickThrough !== false) window.petAPI?.setMouseIgnore(true);
+  }, [dragging, hudOpen, settings.clickThrough]);
 
   return (
     <main className="stage">

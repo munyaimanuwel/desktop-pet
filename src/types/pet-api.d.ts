@@ -13,6 +13,7 @@ export type PetState = {
   facing?: number;
   hatchedAt?: number;
   lastGreetingDay?: string | null;
+  lastEvent?: string | null;
 };
 
 export type PetSettings = {
@@ -20,6 +21,7 @@ export type PetSettings = {
   roam: boolean;
   speech: 'off' | 'quiet' | 'normal';
   alwaysOnTop: boolean;
+  clickThrough: boolean;
   launchAtLogin: boolean;
   repoDir: string;
   hasApiKey: boolean;
