@@ -433,7 +433,10 @@ app.whenReady().then(() => {
   ipcMain.on('pet:menu', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.setIgnoreMouseEvents(false);
-    buildMenu().popup({ window: mainWindow });
+    buildMenu().popup({
+      window: mainWindow,
+      callback: () => applyClickThrough(),
+    });
   });
   ipcMain.on('pet:dragStart', (_e, offset) => {
     if (roam) roam.pause();
