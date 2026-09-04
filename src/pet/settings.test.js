@@ -11,19 +11,27 @@ test('normalize fills defaults and clamps name', () => {
   assert.strictEqual(s.speech, 'normal');
   assert.strictEqual(s.roam, false);
   assert.strictEqual(s.alwaysOnTop, true);
+  assert.strictEqual(s.clickThrough, true);
 });
 
-test('publicView hides the api key', () => {
-  const view = publicView({ ...normalize({ apiKey: 'secret' }) });
+test('normalize respects clickThrough false', () => {
+  const s = normalize({ clickThrough: false });
+  assert.strictEqual(s.clickThrough, false);
+});
+
+test('publicView hides the api key and exposes clickThrough', () => {
+  const view = publicView({ ...normalize({ apiKey: 'secret', clickThrough: false }) });
   assert.strictEqual(view.hasApiKey, true);
   assert.strictEqual(view.apiKey, undefined);
+  assert.strictEqual(view.clickThrough, false);
 });
 
 test('persist then load round-trips', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-set-'));
-  persist(dir, { name: 'Bean', roam: false, speech: 'quiet' });
+  persist(dir, { name: 'Bean', roam: false, speech: 'quiet', clickThrough: false });
   const s = load(dir);
   assert.strictEqual(s.name, 'Bean');
   assert.strictEqual(s.speech, 'quiet');
   assert.strictEqual(s.roam, false);
+  assert.strictEqual(s.clickThrough, false);
 });
