@@ -1,0 +1,43 @@
+{
+  "name": "desktop-pet",
+  "displayName": "Desktop Pet",
+  "description": "Let your desktop pet react to build and test tasks.",
+  "publisher": "petal",
+  "version": "0.2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Desktop Pet",
+      "properties": {
+        "desktopPet.port": {
+          "type": "number",
+          "default": 41823,
+          "description": "Port of the local Desktop Pet event server."
+        },
+        "desktopPet.taskPattern": {
+          "type": "string",
+          "default": "",
+          "description": "Optional regex to recognize build tasks with unusual names. Leave empty to ignore."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "desktopPet.ping",
+        "title": "Desktop Pet: Send test ping"
+      }
+    ]
+  }
+}

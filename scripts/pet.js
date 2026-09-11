@@ -20,7 +20,7 @@ if (!type) {
   process.exit(1);
 }
 
-const body = JSON.stringify({ type });
+const body = JSON.stringify({ type, source: 'cli' });
 const req = http.request(
   {
     host: '127.0.0.1',

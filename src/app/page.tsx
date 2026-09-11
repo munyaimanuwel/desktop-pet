@@ -30,6 +30,7 @@ const FALLBACK_SETTINGS: PetSettings = {
   clickThrough: true,
   launchAtLogin: false,
   repoDir: '',
+  repoIsGit: false,
   hasApiKey: false,
 };
 

@@ -26,6 +26,8 @@ const settingsStore = require('../pet/settings');
 const { generateLine, isSpecial, resolveApiKey } = require('../pet/ai');
 const eventsSource = require('./events-source');
 const { createRoam } = require('./roam');
+const { createLogger } = require('./log');
+const hooks = require('./hooks');
 const { loadDotEnv } = require('./env');
 
 loadDotEnv();
@@ -38,6 +40,17 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('ai.petal.desktop-pet');
 }
 
+// One pet per machine. Must run before whenReady() so two launches cannot both
+// create a window and race for the event-server port.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  process.exit(0);
+}
+app.on('second-instance', () => {
+  setHidden(false);
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
+});
+
 const isDev = Boolean(process.env.ELECTRON_START_URL);
 const TICK_MS = 30 * 1000;
 const FAILURE_THRESHOLD = 3;
@@ -48,6 +61,7 @@ let mainWindow = null;
 let tray = null;
 let petState = null;
 let settings = null;
+let log = console;
 let tickTimer = null;
 let eventSource = null;
 let returnTimer = null;
@@ -77,10 +91,43 @@ function persistPet() {
   store.persist(dataDir(), petState);
 }
 
+// The display whose work area overlaps these bounds, if any. Used to decide
+// whether a remembered position is still reachable.
+function displayForBounds(bounds) {
+  return (
+    screen.getAllDisplays().find((d) => {
+      const a = d.workArea;
+      return (
+        bounds.x + bounds.width > a.x &&
+        bounds.x < a.x + a.width &&
+        bounds.y + bounds.height > a.y &&
+        bounds.y < a.y + a.height
+      );
+    }) || null
+  );
+}
+
+function saveLastBounds(bounds) {
+  if (!settings || !mainWindow || mainWindow.isDestroyed()) return;
+  const b = bounds || mainWindow.getBounds();
+  const prev = settings.lastBounds;
+  if (prev && prev.x === b.x && prev.y === b.y) return;
+  settings = settingsStore.persist(dataDir(), { ...settings, lastBounds: { x: b.x, y: b.y } });
+}
+
 function broadcast(message = null) {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('pet:state', { state: petState, message, settings: settingsStore.publicView(settings) });
+    mainWindow.webContents.send('pet:state', { state: petState, message, settings: settingsView() });
   }
+}
+
+// What the renderer may see, plus a main-process-only "is this a git repo" flag
+// the HUD uses to enable the install-hooks button.
+function settingsView() {
+  return {
+    ...settingsStore.publicView(settings),
+    repoIsGit: hooks.isGitRoot(settings.repoDir || process.cwd()),
+  };
 }
 
 function speak(event, message) {
@@ -268,10 +315,11 @@ function applySettings(patch) {
   if (roam) {
     if (settings.roam && !hovering) roam.resume();
     else roam.pause();
+    if (settings.roam) roam.snapToFloor();
   }
   refreshTrayMenu();
   if (tray && !tray.isDestroyed()) tray.setToolTip(`Desktop Pet — ${settings.name}`);
-  return settingsStore.publicView(settings);
+  return settingsView();
 }
 
 function buildMenu() {
@@ -345,6 +393,13 @@ function createWindow() {
   applyAlwaysOnTop();
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
+  if (
+    settings.lastBounds &&
+    displayForBounds({ ...settings.lastBounds, width: 340, height: 400 })
+  ) {
+    mainWindow.setBounds({ x: settings.lastBounds.x, y: settings.lastBounds.y, width: 340, height: 400 });
+  }
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     applyClickThrough();
@@ -389,6 +444,7 @@ function clampToVisibleArea() {
 
 app.whenReady().then(() => {
   const dir = dataDir();
+  log = createLogger(dir);
   settings = settingsStore.load(dir);
   petState = store.load(dir);
   if (settings.name && petState.name !== settings.name) petState.name = settings.name;
@@ -404,7 +460,7 @@ app.whenReady().then(() => {
   }
 
   ipcMain.handle('pet:getState', () => petState);
-  ipcMain.handle('pet:getSettings', () => settingsStore.publicView(settings));
+  ipcMain.handle('pet:getSettings', () => settingsView());
   ipcMain.on('pet:setSettings', (e, patch) => {
     const view = applySettings(patch || {});
     e.sender.send('pet:settings', view);
@@ -412,6 +468,17 @@ app.whenReady().then(() => {
   });
   ipcMain.on('pet:intent', (_, type) => {
     if (type === 'pet' || type === 'feed') handleEvent(type.toUpperCase());
+  });
+  ipcMain.on('pet:installHooks', () => {
+    const result = hooks.installHooks(settings.repoDir || process.cwd());
+    if (!result.ok) {
+      broadcast('No git repo here to add hooks to.');
+      return;
+    }
+    const parts = [];
+    if (result.written.length) parts.push(`installed ${result.written.join(', ')}`);
+    if (result.skipped.length) parts.push(`left ${result.skipped.join(', ')} alone`);
+    broadcast(parts.length ? `Hooks: ${parts.join('; ')}.` : 'Hooks already installed.');
   });
   ipcMain.on('pet:toggleHide', () => toggleHide());
   ipcMain.on('pet:show', () => setHidden(false));
@@ -452,6 +519,8 @@ app.whenReady().then(() => {
   });
   ipcMain.on('pet:dragEnd', () => {
     dragOffset = null;
+    saveLastBounds();
+    if (roam && settings.roam) roam.returnToFloor();
     if (roam && settings.roam && !hovering) roam.resume();
   });
 
@@ -469,11 +538,16 @@ app.whenReady().then(() => {
     broadcast: () => broadcast(),
     getSettings: () => settings,
     screen,
+    persistBounds: saveLastBounds,
+    log,
   });
-  if (settings.roam) roam.schedule();
+  if (settings.roam) {
+    roam.snapToFloor();
+    roam.schedule();
+  }
 
   try {
-    globalShortcut.register('CommandOrControl+Shift+P', toggleHide);
+    globalShortcut.register('CommandOrControl+Alt+P', toggleHide);
   } catch (err) {
     console.error('[pet] shortcut unavailable', err);
   }
@@ -482,6 +556,7 @@ app.whenReady().then(() => {
   eventSource = eventsSource.start({
     onEvent: handleEvent,
     repoDir: settings.repoDir || process.cwd(),
+    log,
   });
 
   app.on('activate', () => {
@@ -495,6 +570,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  saveLastBounds();
   if (tickTimer) clearInterval(tickTimer);
   if (returnTimer) clearTimeout(returnTimer);
   if (roam) roam.stop();

@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('petAPI', {
     return () => ipcRenderer.removeListener('pet:settings', listener);
   },
   sendIntent: (type) => ipcRenderer.send('pet:intent', type),
+  installHooks: () => ipcRenderer.send('pet:installHooks'),
   dragStart: (offset) => ipcRenderer.send('pet:dragStart', offset),
   dragMove: () => ipcRenderer.send('pet:dragMove'),
   dragEnd: () => ipcRenderer.send('pet:dragEnd'),

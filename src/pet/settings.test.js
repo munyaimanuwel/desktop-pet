@@ -35,3 +35,17 @@ test('persist then load round-trips', () => {
   assert.strictEqual(s.roam, false);
   assert.strictEqual(s.clickThrough, false);
 });
+
+test('lastBounds defaults to null and survives a round-trip', () => {
+  assert.strictEqual(normalize({}).lastBounds, null);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-set-'));
+  persist(dir, { lastBounds: { x: 120, y: 640 } });
+  assert.deepStrictEqual(load(dir).lastBounds, { x: 120, y: 640 });
+});
+
+test('lastBounds garbage normalizes to null and stays out of publicView', () => {
+  assert.strictEqual(normalize({ lastBounds: 'nope' }).lastBounds, null);
+  assert.strictEqual(normalize({ lastBounds: { x: 'a', y: 1 } }).lastBounds, null);
+  const view = publicView(normalize({ lastBounds: { x: 10, y: 20 } }));
+  assert.strictEqual(view.lastBounds, undefined);
+});

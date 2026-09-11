@@ -9,12 +9,13 @@ The pet is not a chatbot. It is a persistent digital creature that notices you: 
 ## What it does
 
 - Lives in a small always-on-top window (Pip, a purple blob)
-- Wanders along your desktop, blinks, and faces the way it is walking
+- Walks the bottom of your screen (the taskbar edge) and can hop to a second monitor
+- Blinks, and faces the way it is walking
 - Has mood, needs, XP, and a level
 - Remembers today's work and talks about it once in a while
 - Reacts to developer activity (git, builds, tests, idle time)
 - Speaks up only occasionally — quiet and off modes if you need focus
-- Hides in the system tray (`Ctrl+Shift+P` to show/hide)
+- Hides in the system tray (`Ctrl+Alt+P` / `Cmd+Alt+P` to show/hide)
 - Optional AI one-liners for rare moments (level-up, a pile of failures, good morning)
 
 ## Run it
@@ -38,7 +39,10 @@ npm run dist            # Windows installer in release/
 - **Feed** from the hover panel or the tray
 - **Settings** on the hover panel: name, wander, speech, always-on-top, start at login, repo to watch
 - **Right-click** or the tray icon for hide / feed / wander / speech / quit
-- **Ctrl+Shift+P** shows or hides the window
+- **Ctrl+Alt+P** / **Cmd+Alt+P** shows or hides the window
+
+With Wander on, Pip walks the taskbar edge and can hop to another monitor. Drop it
+somewhere with Wander off to park it there; turn Wander on and it returns to the floor.
 
 State lives in Electron's userData directory (`pet.json` and `settings.json`).
 
@@ -58,6 +62,19 @@ npm run pet -- test-failure
 ```
 
 Optional git hooks in this repo: `npm run hooks:install`
+
+### From VS Code / Cursor
+
+Sideload the bundled extension so builds and tests reach Pip without a CLI:
+
+```bash
+npm run ext:package
+```
+
+Then in VS Code or Cursor: **Extensions → … → Install from VSIX…** and pick
+`extensions/vscode/desktop-pet-0.2.0.vsix`. It is local-desktop only (a remote/WSL
+window cannot reach your desktop's loopback) and only reacts to tasks VS Code marks
+as a build or test. Details: [`extensions/vscode/README.md`](extensions/vscode/README.md).
 
 ## Optional AI
 

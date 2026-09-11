@@ -121,6 +121,15 @@ export default function HUD({
               onChange={(e) => setRepoDir(e.target.value)}
             />
           </label>
+          <button
+            type="button"
+            className="hud-hooks"
+            disabled={!settings.repoIsGit}
+            title={settings.repoIsGit ? 'Add post-commit and pre-push hooks' : 'Watched folder is not a git repo'}
+            onClick={() => window.petAPI?.installHooks()}
+          >
+            Install git hooks in watched repo
+          </button>
           <label>
             xAI key {settings.hasApiKey ? '(saved)' : '(optional)'}
             <input

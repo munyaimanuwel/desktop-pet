@@ -16,7 +16,15 @@ function defaults() {
     launchAtLogin: false,
     apiKey: '',
     repoDir: '',
+    lastBounds: null,
   };
+}
+
+// Window position is a main-process concern; keep it out of publicView().
+function normalizeBounds(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!Number.isFinite(raw.x) || !Number.isFinite(raw.y)) return null;
+  return { x: Math.round(raw.x), y: Math.round(raw.y) };
 }
 
 function normalize(raw) {
@@ -32,6 +40,7 @@ function normalize(raw) {
     launchAtLogin: Boolean(raw.launchAtLogin),
     apiKey: typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '',
     repoDir: typeof raw.repoDir === 'string' ? raw.repoDir.trim() : '',
+    lastBounds: normalizeBounds(raw.lastBounds),
   };
 }
 

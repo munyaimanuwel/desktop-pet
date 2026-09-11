@@ -1,6 +1,6 @@
 {
   "name": "desktop-pet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A small AI-powered desktop pet that lives on your desktop while you work.",
   "author": "Pip",
@@ -13,9 +13,10 @@
     "electron:prod": "npm run build && cross-env NODE_ENV=production electron .",
     "pack": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir --publish never",
     "dist": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish never",
-    "test": "node --test \"src/pet/*.test.js\"",
+    "test": "node --test \"src/pet/*.test.js\" \"src/electron/*.test.js\" \"extensions/vscode/*.test.js\"",
     "pet": "node scripts/pet.js",
-    "hooks:install": "node scripts/install-hooks.js"
+    "hooks:install": "node scripts/install-hooks.js",
+    "ext:package": "npx --yes --prefix extensions/vscode @vscode/vsce package -o desktop-pet-0.2.0.vsix"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
@@ -41,6 +42,7 @@
       "src/electron/**/*",
       "src/pet/**/*",
       "!src/pet/**/*.test.js",
+      "!src/electron/**/*.test.js",
       "!**/node_modules/**"
     ],
     "directories": {

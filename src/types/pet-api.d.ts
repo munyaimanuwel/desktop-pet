@@ -24,6 +24,7 @@ export type PetSettings = {
   clickThrough: boolean;
   launchAtLogin: boolean;
   repoDir: string;
+  repoIsGit: boolean;
   hasApiKey: boolean;
 };
 
@@ -44,6 +45,7 @@ declare global {
       onState: (fn: (update: PetStateUpdate) => void) => () => void;
       onSettings: (fn: (settings: PetSettings) => void) => () => void;
       sendIntent: (type: PetIntent) => void;
+      installHooks: () => void;
       dragStart: (offset: [number, number]) => void;
       dragMove: () => void;
       dragEnd: () => void;
