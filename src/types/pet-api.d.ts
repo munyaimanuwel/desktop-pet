@@ -55,6 +55,7 @@ declare global {
       setMouseIgnore: (ignore: boolean) => void;
       setHover: (on: boolean) => void;
       openMenu: () => void;
+      onOpenSettings: (fn: () => void) => () => void;
       onToggleHide: (fn: (hidden: boolean) => void) => void;
     };
   }

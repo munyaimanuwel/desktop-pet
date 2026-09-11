@@ -26,5 +26,10 @@ contextBridge.exposeInMainWorld('petAPI', {
   setMouseIgnore: (ignore) => ipcRenderer.send('pet:mouseIgnore', ignore),
   setHover: (on) => ipcRenderer.send('pet:hover', on),
   openMenu: () => ipcRenderer.send('pet:menu'),
+  onOpenSettings: (fn) => {
+    const listener = () => fn();
+    ipcRenderer.on('pet:openSettings', listener);
+    return () => ipcRenderer.removeListener('pet:openSettings', listener);
+  },
   onToggleHide: (fn) => ipcRenderer.on('pet:toggleHide', (_, v) => fn(v)),
 });

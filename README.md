@@ -35,10 +35,10 @@ npm run dist            # Windows installer in release/
 
 ## Using Pip
 
-- **Click** to pet · **Drag** to move · **Hover** for stats
-- **Feed** from the hover panel or the tray
-- **Settings** on the hover panel: name, wander, speech, always-on-top, start at login, repo to watch
-- **Right-click** or the tray icon for hide / feed / wander / speech / quit
+- **Click** to pet · **Drag** to move
+- **Right-click** for the menu: Settings…, Feed, wander, speech, quit
+- **Settings…** opens the stats/settings panel (Esc or a click elsewhere closes it)
+- **Feed** from the panel or the menu
 - **Ctrl+Alt+P** / **Cmd+Alt+P** shows or hides the window
 
 With Wander on, Pip walks the taskbar edge and can hop to another monitor. Drop it

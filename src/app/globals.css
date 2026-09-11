@@ -311,8 +311,8 @@ body {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.hitbox:hover .hud,
-.pet:hover + .hud,
+/* The panel is opened explicitly (right-click → Settings…, or a button inside
+   it). Hovering the pet must not pop a dialog over it. */
 .hud--pinned {
   opacity: 1;
   pointer-events: auto;

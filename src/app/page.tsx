@@ -58,11 +58,22 @@ export default function Home() {
       }
     });
     const unsubSettings = window.petAPI.onSettings(setSettings);
+    const unsubOpenSettings = window.petAPI.onOpenSettings(() => setHudOpen(true));
     return () => {
       clearTimeout(timeout);
       unsubState();
       unsubSettings();
+      unsubOpenSettings();
     };
+  }, []);
+
+  // Esc closes the panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHudOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Restore click-through when settings close or drag ends while pointer is outside.
@@ -89,9 +100,25 @@ export default function Home() {
     if (settings.clickThrough !== false) window.petAPI?.setMouseIgnore(true);
   }, [dragging, hudOpen, settings.clickThrough]);
 
+  // Clicking anything that is not the open panel dismisses it.
+  const onHitDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!hudOpen) return;
+      const target = e.target as Element | null;
+      if (target && target.closest('.hud')) return;
+      setHudOpen(false);
+    },
+    [hudOpen]
+  );
+
   return (
     <main className="stage">
-      <div className="hitbox" onMouseEnter={onHitEnter} onMouseLeave={onHitLeave}>
+      <div
+        className="hitbox"
+        onMouseEnter={onHitEnter}
+        onMouseLeave={onHitLeave}
+        onMouseDown={onHitDown}
+      >
         <div className="speech-slot">{message && <SpeechBubble text={message} />}</div>
         <Pet state={state} onClick={pet} onDragChange={setDragging} />
         <HUD

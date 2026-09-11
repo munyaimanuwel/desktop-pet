@@ -327,6 +327,7 @@ function buildMenu() {
   const name = (settings && settings.name) || 'Pip';
   return Menu.buildFromTemplate([
     { label: visible ? `Hide ${name}` : `Show ${name}`, click: toggleHide },
+    { label: 'Settings…', click: openSettings },
     { label: 'Feed', click: () => handleEvent('FEED') },
     { type: 'separator' },
     { label: 'Wander', type: 'checkbox', checked: !!(settings && settings.roam), click: (item) => applySettings({ roam: item.checked }) },
@@ -352,6 +353,13 @@ function buildMenu() {
 
 function refreshTrayMenu() {
   if (tray && !tray.isDestroyed()) tray.setContextMenu(buildMenu());
+}
+
+// The panel is opened explicitly from the menu, never on hover. The renderer
+// owns the pinned state; main just asks it to open.
+function openSettings() {
+  setHidden(false);
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('pet:openSettings');
 }
 
 function createTray() {
