@@ -51,6 +51,17 @@ function createInitialState() {
     lastGreetingDay: null,
     memories: [],
     dayStats: { day: '', commits: 0, pushes: 0, builds: 0, tests: 0, failures: 0, pets: 0, feeds: 0 },
+    // Journal facts: notable moments the pet can bring up later. Capped, local.
+    journal: [],
+    lastPushAt: 0,
+    failureStreakStartedAt: 0,
+    redStreakNoted: 0,
+    namedAt: 0,
+    previousName: '',
+    lastSeenAt: 0, // 0 = unknown; never treat as "gone a long time"
+    lastEndOfDay: null,
+    lastAiAt: 0,
+    aiLinesToday: { day: '', count: 0 },
   };
 }
 

@@ -20,13 +20,14 @@ const store = require('../pet/store');
 const { tick, deriveMood } = require('../pet/tick');
 const { REACTION_STATES, STATES } = require('../pet/state');
 const { messageFor } = require('../pet/messages');
-const { dayKey } = require('../pet/memory');
+const { dayKey, note } = require('../pet/memory');
 const { shouldSpeak } = require('../pet/speech');
 const settingsStore = require('../pet/settings');
 const { generateLine, isSpecial, resolveApiKey } = require('../pet/ai');
 const eventsSource = require('./events-source');
 const { createRoam } = require('./roam');
 const { createLogger } = require('./log');
+const { initUpdater } = require('./updater');
 const hooks = require('./hooks');
 const { loadDotEnv } = require('./env');
 
@@ -56,12 +57,21 @@ const TICK_MS = 30 * 1000;
 const FAILURE_THRESHOLD = 3;
 const STALE_SESSION_MS = 24 * 60 * 60 * 1000;
 const REACTION_MS = 4500;
+const ABSENCE_MS = 36 * 60 * 60 * 1000;
+const AI_COOLDOWN_MS = 30 * 60 * 1000;
+const AI_DAILY_CAP = 4;
+const END_OF_DAY_HOUR = 18;
+const WINDOW_W = 280;
+const WINDOW_H = 240;
+const HUD_GROWTH = 320; // extra height the settings panel needs
 
 let mainWindow = null;
 let tray = null;
 let petState = null;
 let settings = null;
 let log = console;
+let hudPinned = false;
+let updater = null;
 let tickTimer = null;
 let eventSource = null;
 let returnTimer = null;
@@ -150,27 +160,50 @@ function scheduleReturnToIdle() {
   }, REACTION_MS);
 }
 
-function commit(result) {
-  if (!result || !result.applied) return;
-  petState = result.state;
-  persistPet();
-  const event = result.messageEvent || '';
-  const key = resolveApiKey(settings);
-  if (key && isSpecial(event) && shouldSpeak(settings.speech, event)) {
-    const snapshot = result.state;
-    petState = { ...snapshot, state: STATES.thinking };
+function aiBudget() {
+  const day = dayKey();
+  const used = petState.aiLinesToday && petState.aiLinesToday.day === day ? petState.aiLinesToday.count : 0;
+  const cooled = Date.now() - (petState.lastAiAt || 0) >= AI_COOLDOWN_MS;
+  return { key: resolveApiKey(settings), ok: cooled && used < AI_DAILY_CAP };
+}
+
+// The one path for "maybe generate, else say the canned line". Called from
+// commit, greetIfNeeded, and handleTick so tick cannot bypass the caps.
+function maybeSpeakGenerated(event, canned, snapshot) {
+  if (!shouldSpeak(settings.speech, event)) {
     broadcast(null);
-    generateLine({ event, state: snapshot, apiKey: key }).then((line) => {
-      if (!petState) return;
-      petState = snapshot;
-      persistPet();
-      speak(event, line || result.message);
-      scheduleReturnToIdle();
-    });
     return;
   }
-  speak(event, result.message);
-  scheduleReturnToIdle();
+  const budget = aiBudget();
+  if (!budget.key || !budget.ok || !isSpecial(event)) {
+    speak(event, canned);
+    scheduleReturnToIdle();
+    return;
+  }
+  petState = { ...snapshot, state: STATES.thinking };
+  broadcast(null);
+  generateLine({ event, state: snapshot, apiKey: budget.key }).then((line) => {
+    if (!petState) return;
+    // Restore the event reaction (celebrating / curious / sad) rather than
+    // leaving `thinking` in place, which would skip the visible reaction.
+    petState = snapshot;
+    if (line) {
+      const day = dayKey();
+      const used = petState.aiLinesToday && petState.aiLinesToday.day === day ? petState.aiLinesToday.count : 0;
+      petState = { ...petState, lastAiAt: Date.now(), aiLinesToday: { day, count: used + 1 } };
+    }
+    persistPet();
+    speak(event, line || canned);
+    scheduleReturnToIdle();
+  });
+}
+
+function commit(result) {
+  if (!result || !result.applied) return;
+  const event = result.messageEvent || '';
+  petState = result.state;
+  persistPet();
+  maybeSpeakGenerated(event, result.message, result.state);
 }
 
 function handleEvent(type) {
@@ -195,29 +228,38 @@ function handleEvent(type) {
 function greetIfNeeded(idleSeconds) {
   const today = dayKey();
   if (!petState.hatchedAt) {
-    petState = { ...petState, hatchedAt: Date.now(), lastGreetingDay: today, state: STATES.curious };
+    petState = { ...petState, hatchedAt: Date.now(), lastGreetingDay: today, lastSeenAt: Date.now(), state: STATES.curious };
     persistPet();
     speak('WELCOME', messageFor('WELCOME', petState));
     scheduleReturnToIdle();
     return true;
   }
-  if (petState.lastGreetingDay !== today && idleSeconds < 180) {
-    petState = { ...petState, lastGreetingDay: today, state: STATES.curious };
+  // Long absence. lastSeenAt === 0 means unknown — never treat that as a holiday.
+  const seenAt = petState.lastSeenAt || 0;
+  if (seenAt > 0 && Date.now() - seenAt >= ABSENCE_MS && idleSeconds < 180) {
+    petState = { ...petState, lastSeenAt: Date.now(), lastGreetingDay: today, state: STATES.curious };
+    Object.assign(petState, note(petState, { kind: 'absence' }, Date.now()));
     persistPet();
-    const canned = messageFor('DAILY_GREETING', petState);
-    const key = resolveApiKey(settings);
-    if (key && shouldSpeak(settings.speech, 'DAILY_GREETING')) {
-      generateLine({ event: 'DAILY_GREETING', state: petState, apiKey: key }).then((line) => {
-        speak('DAILY_GREETING', line || canned);
-        scheduleReturnToIdle();
-      });
-    } else {
-      speak('DAILY_GREETING', canned);
-      scheduleReturnToIdle();
-    }
+    maybeSpeakGenerated('LONG_ABSENCE', messageFor('LONG_ABSENCE', petState), petState);
+    return true;
+  }
+  if (petState.lastGreetingDay !== today && idleSeconds < 180) {
+    petState = { ...petState, lastGreetingDay: today, lastSeenAt: Date.now(), state: STATES.curious };
+    persistPet();
+    maybeSpeakGenerated('DAILY_GREETING', messageFor('DAILY_GREETING', petState), petState);
     return true;
   }
   return false;
+}
+
+// Evening, something happened today, the user is around, and we have not said
+// so yet today.
+function endOfDayDue(idleSeconds) {
+  if (new Date().getHours() < END_OF_DAY_HOUR) return false;
+  if (idleSeconds >= 180) return false;
+  if (!petState || petState.lastEndOfDay === dayKey()) return false;
+  const s = petState.dayStats || {};
+  return Boolean((s.commits || 0) + (s.pushes || 0) + (s.builds || 0) + (s.tests || 0));
 }
 
 function handleTick() {
@@ -227,24 +269,37 @@ function handleTick() {
   } catch {
     idleSeconds = 0;
   }
+  // Refresh the "last seen" clock every tick, so a crash still leaves a value
+  // that is at most ~30s stale rather than a days-old clean-quit timestamp.
+  petState = { ...petState, lastSeenAt: Date.now() };
   if (greetIfNeeded(idleSeconds)) return;
   const result = tick(petState, { now: Date.now(), idleSeconds });
-  if (result && result.state) {
-    const wasWalking = petState.state === 'walking';
-    petState = result.state;
+  if (!result || !result.state) return;
+
+  const wasWalking = petState.state === 'walking';
+  petState = result.state;
+  persistPet();
+  if (wasWalking && petState.state !== 'walking' && roam) {
+    roam.pause();
+    if (settings.roam && !hovering) roam.resume();
+  }
+
+  if (endOfDayDue(idleSeconds)) {
+    petState = { ...petState, lastEndOfDay: dayKey() };
     persistPet();
-    if (wasWalking && petState.state !== 'walking' && roam) {
-      roam.pause();
-      if (settings.roam && !hovering) roam.resume();
+    maybeSpeakGenerated('END_OF_DAY', messageFor('END_OF_DAY', petState), petState);
+    return;
+  }
+
+  const event = result.messageEvent;
+  if (result.message && event) {
+    if (event === 'WAKING_UP') maybeSpeakGenerated(event, result.message, petState);
+    else {
+      speak(event, result.message);
+      scheduleReturnToIdle();
     }
-    const event =
-      petState.state === 'sleeping' || petState.state === 'sleepy'
-        ? 'FALLING_ASLEEP'
-        : petState.state === 'curious'
-          ? 'WAKING_UP'
-          : 'HUNGRY';
-    speak(result.message ? event : '', result.message);
-    scheduleReturnToIdle();
+  } else {
+    broadcast();
   }
 }
 
@@ -298,7 +353,11 @@ function applySettings(patch) {
   }
   settings = settingsStore.persist(dataDir(), next);
   if (petState && petState.name !== settings.name) {
-    petState = { ...petState, name: settings.name };
+    const previousName = petState.name || '';
+    const namedAt = Date.now();
+    petState = { ...petState, name: settings.name, previousName, namedAt };
+    // Journal the rename so a later commit can say "You named me Maple."
+    Object.assign(petState, note(petState, { kind: 'named', name: settings.name }, namedAt));
     persistPet();
     broadcast();
   }
@@ -319,6 +378,7 @@ function applySettings(patch) {
   }
   refreshTrayMenu();
   if (tray && !tray.isDestroyed()) tray.setToolTip(`Desktop Pet — ${settings.name}`);
+  syncUpdater();
   return settingsView();
 }
 
@@ -362,6 +422,50 @@ function openSettings() {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('pet:openSettings');
 }
 
+// Grow upward (and shrink back) so the pet's feet stay on the floor while the
+// in-flow settings panel is visible.
+function setHudPinned(pinned) {
+  if (!mainWindow || mainWindow.isDestroyed() || pinned === hudPinned) return;
+  hudPinned = pinned;
+  const b = mainWindow.getBounds();
+  const delta = pinned ? HUD_GROWTH : -HUD_GROWTH;
+  mainWindow.setBounds({ x: b.x, y: b.y - delta, width: b.width, height: b.height + delta });
+  clampToVisibleArea();
+  // The panel can be opened from the tray, where the pointer is not over the
+  // pet and the window may still be click-through. Make it interactive while
+  // open, and restore the hover-based rule (and roaming) on close.
+  const roaming = Boolean(roam && settings && settings.roam);
+  if (pinned) {
+    if (roaming) roam.snapToFloor();
+    mainWindow.setIgnoreMouseEvents(false);
+    if (roam) roam.pause();
+  } else {
+    applyClickThrough();
+    if (roaming && !hovering) roam.resume();
+    if (roaming) roam.snapToFloor();
+  }
+}
+
+// Start/stop the quiet auto-updater to match the setting.
+function syncUpdater() {
+  const wanted = Boolean(settings && settings.autoUpdate);
+  if (wanted && !updater) {
+    updater = initUpdater({
+      log,
+      onDownloaded: () => {
+        if (!petState) return;
+        petState = { ...petState, state: STATES.celebrating };
+        persistPet();
+        speak('UPDATE', messageFor('UPDATE', petState));
+        scheduleReturnToIdle();
+      },
+    });
+  } else if (!wanted && updater) {
+    updater.stop();
+    updater = null;
+  }
+}
+
 function createTray() {
   try {
     const img = loadIcon();
@@ -378,8 +482,8 @@ function createTray() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 340,
-    height: 400,
+    width: WINDOW_W,
+    height: WINDOW_H,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -403,9 +507,9 @@ function createWindow() {
 
   if (
     settings.lastBounds &&
-    displayForBounds({ ...settings.lastBounds, width: 340, height: 400 })
+    displayForBounds({ ...settings.lastBounds, width: WINDOW_W, height: WINDOW_H })
   ) {
-    mainWindow.setBounds({ x: settings.lastBounds.x, y: settings.lastBounds.y, width: 340, height: 400 });
+    mainWindow.setBounds({ x: settings.lastBounds.x, y: settings.lastBounds.y, width: WINDOW_W, height: WINDOW_H });
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -453,6 +557,8 @@ function clampToVisibleArea() {
 app.whenReady().then(() => {
   const dir = dataDir();
   log = createLogger(dir);
+  // A desktop pet with no window chrome has no business in the Dock.
+  if (process.platform === 'darwin' && app.dock) app.dock.hide();
   settings = settingsStore.load(dir);
   petState = store.load(dir);
   if (settings.name && petState.name !== settings.name) petState.name = settings.name;
@@ -489,6 +595,7 @@ app.whenReady().then(() => {
     broadcast(parts.length ? `Hooks: ${parts.join('; ')}.` : 'Hooks already installed.');
   });
   ipcMain.on('pet:toggleHide', () => toggleHide());
+  ipcMain.on('pet:hudPinned', (_e, pinned) => setHudPinned(!!pinned));
   ipcMain.on('pet:show', () => setHidden(false));
   ipcMain.on('pet:hide', () => setHidden(true));
   ipcMain.on('pet:mouseIgnore', (_e, ignore) => {
@@ -561,6 +668,17 @@ app.whenReady().then(() => {
   }
 
   tickTimer = setInterval(handleTick, TICK_MS);
+  try {
+    // A laptop lid or sleep is the other way to leave; record it too.
+    powerMonitor.on('suspend', () => {
+      if (petState) {
+        petState = { ...petState, lastSeenAt: Date.now() };
+        persistPet();
+      }
+    });
+  } catch {
+    /* unsupported on this platform */
+  }
   eventSource = eventsSource.start({
     onEvent: handleEvent,
     repoDir: settings.repoDir || process.cwd(),
@@ -570,6 +688,7 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+  syncUpdater();
 });
 
 app.on('window-all-closed', () => {
@@ -578,10 +697,12 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  if (petState) petState = { ...petState, lastSeenAt: Date.now() };
   saveLastBounds();
   if (tickTimer) clearInterval(tickTimer);
   if (returnTimer) clearTimeout(returnTimer);
   if (roam) roam.stop();
+  if (updater) updater.stop();
   if (eventSource) eventSource.stop();
   globalShortcut.unregisterAll();
 });

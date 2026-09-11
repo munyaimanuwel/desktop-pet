@@ -3,9 +3,10 @@
 const { clone, xpForLevel, CLAMP } = require('./state');
 const { messageFor } = require('./messages');
 const { deriveMood } = require('./tick');
-const { remember, recallLine } = require('./memory');
+const { remember, pickRecall, markSpoken, note, journalLine, DAY_MS } = require('./memory');
 
 const COOLDOWN_MS = 60 * 1000;
+const RED_STREAK_MS = 60 * 60 * 1000;
 
 // Which state the pet should enter for each event type.
 const EVENT_STATE = {
@@ -86,6 +87,37 @@ function applyEvent(state, event, opts = {}) {
   next.lastEventAt = { ...(state.lastEventAt || {}), [event]: now };
   Object.assign(next, remember(next, event, now));
 
+  // Journal facts. Deterministic, no LLM: these survive the day roll and give
+  // the pet something specific to bring up later.
+  let factLine = null;
+  if (event === 'BUILD_FAILURE' || event === 'TEST_FAILURE') {
+    if (!next.failureStreakStartedAt) next.failureStreakStartedAt = now;
+    next.redStreakNoted = 0;
+  } else if (event === 'BUILD_SUCCESS' || event === 'TEST_SUCCESS') {
+    if (next.failureStreakStartedAt) {
+      if (now - next.failureStreakStartedAt >= RED_STREAK_MS) {
+        const fact = { kind: 'red-streak', minutes: 60 };
+        Object.assign(next, note(next, fact, now));
+        factLine = journalLine(fact, next, now);
+      }
+      next.failureStreakStartedAt = 0;
+      next.redStreakNoted = 0;
+    }
+  }
+  if (event === 'PUSH') {
+    const prevPush = state.lastPushAt || 0;
+    if (prevPush > 0 && now - prevPush >= 3 * DAY_MS) {
+      const fact = { kind: 'push-gap', days: Math.floor((now - prevPush) / DAY_MS) };
+      Object.assign(next, note(next, fact, now));
+      factLine = journalLine(fact, next, now);
+    }
+    next.lastPushAt = now;
+  }
+  const stats = next.dayStats;
+  if (stats && (stats.commits === 5 || stats.pushes === 2)) {
+    Object.assign(next, note(next, { kind: 'busy-day', commits: stats.commits, pushes: stats.pushes }, now));
+  }
+
   // Level-up check after any XP gain.
   let messageEvent = event;
   let message = messageFor(event, next);
@@ -95,10 +127,13 @@ function applyEvent(state, event, opts = {}) {
     next.state = 'celebrating';
     messageEvent = 'LEVEL_UP';
     message = messageFor('LEVEL_UP', next);
+  } else if (factLine) {
+    message = factLine;
   } else if (event === 'COMMIT' || event === 'PUSH') {
-    const recall = recallLine(next);
-    if (recall && next.dayStats && (next.dayStats.commits === 5 || next.dayStats.pushes === 2)) {
-      message = recall;
+    const recall = pickRecall(next, now);
+    if (recall.line) {
+      message = recall.line;
+      if (recall.factAt) Object.assign(next, markSpoken(next, recall.factAt, now));
     }
   }
 

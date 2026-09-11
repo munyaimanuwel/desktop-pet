@@ -19,6 +19,26 @@ test('normalize rejects unknown states', () => {
   assert.strictEqual(s.state, 'idle');
 });
 
+test('normalize defaults the journal-era fields on an old save', () => {
+  const s = normalize({ name: 'Pip' });
+  assert.deepStrictEqual(s.journal, []);
+  assert.strictEqual(s.lastSeenAt, 0);
+  assert.strictEqual(s.lastEndOfDay, null);
+  assert.strictEqual(s.lastPushAt, 0);
+  assert.deepStrictEqual(s.aiLinesToday, { day: '', count: 0 });
+});
+
+test('normalize clamps garbage journal-era fields', () => {
+  const s = normalize({
+    journal: [{ kind: 'absence', at: 5 }, null, 'nope'],
+    lastSeenAt: -5,
+    aiLinesToday: 'nope',
+  });
+  assert.strictEqual(s.journal.length, 1);
+  assert.strictEqual(s.lastSeenAt, 0);
+  assert.deepStrictEqual(s.aiLinesToday, { day: '', count: 0 });
+});
+
 test('load falls back to a fresh pet when the file is missing', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-'));
   const s = load(dir);

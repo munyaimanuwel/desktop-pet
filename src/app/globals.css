@@ -50,14 +50,48 @@ body {
   border: none;
   background: transparent;
   cursor: grab;
-  width: 200px;
-  height: 200px;
+  width: 150px;
+  height: 150px;
   padding: 0;
   outline: none;
 }
 
 .pet:active {
   cursor: grabbing;
+}
+
+/* Sprite-sheet path (used only when public/pip.json exists). */
+.pet-sprite {
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.pet--left.pet-sprite {
+  transform: scaleX(-1);
+}
+
+.pet--idle.pet-sprite {
+  animation: bob 3s ease-in-out infinite;
+}
+.pet--walking.pet-sprite {
+  animation: walk-bob 0.35s ease-in-out infinite;
+}
+.pet--happy.pet-sprite,
+.pet--excited.pet-sprite {
+  animation: wiggle 0.6s ease-in-out infinite;
+}
+.pet--celebrating.pet-sprite {
+  animation: bounce 0.7s ease-in-out infinite;
+}
+.pet--sad.pet-sprite {
+  animation: droop 4s ease-in-out infinite;
+}
+.pet--angry.pet-sprite {
+  animation: shake 0.4s ease-in-out infinite;
+}
+.pet--sleepy.pet-sprite,
+.pet--sleeping.pet-sprite {
+  animation: slow-breathe 3.5s ease-in-out infinite;
 }
 
 .pet-facing,
@@ -294,29 +328,16 @@ body {
 /* ---------- HUD ---------- */
 
 .hud {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  z-index: 2;
+  /* In-flow above the pet; the window grows upward while this is shown. */
+  pointer-events: auto;
   background: var(--hud-bg);
   color: #fff;
   border-radius: 10px;
   padding: 10px;
-  width: 196px;
+  width: 100%;
   max-height: 340px;
   overflow-y: auto;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-/* The panel is opened explicitly (right-click → Settings…, or a button inside
-   it). Hovering the pet must not pop a dialog over it. */
-.hud--pinned {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
+  animation: pop-in 0.18s ease-out;
 }
 
 .hud-row {

@@ -1,6 +1,15 @@
 // Optional one-liner from SpaceXAI (xAI). Deterministic lines always exist;
 // this only replaces them when a key is present and the request is fast.
-const SPECIAL = new Set(['MULTIPLE_FAILURES', 'LEVEL_UP', 'DAILY_GREETING', 'WAKING_UP']);
+const { journalLine } = require('./memory');
+
+const SPECIAL = new Set([
+  'MULTIPLE_FAILURES',
+  'LEVEL_UP',
+  'DAILY_GREETING',
+  'WAKING_UP',
+  'LONG_ABSENCE',
+  'END_OF_DAY',
+]);
 
 const SYSTEM = [
   'You are Pip, a tiny purple creature who lives on a developer\'s desktop.',
@@ -16,6 +25,7 @@ function sanitize(text) {
   if (typeof text !== 'string') return null;
   const line = text.replace(/\s+/g, ' ').replace(/^["'\s]+|["'\s]+$/g, '').trim();
   if (!line || line.length > 90) return null;
+  if (line.split(/\s+/).length > 14) return null;
   return line.slice(0, 80);
 }
 
@@ -42,11 +52,16 @@ function extractText(data) {
 
 function contextPrompt(event, state) {
   const stats = state.dayStats || {};
-  return [
+  const parts = [
     `Event: ${event}.`,
     `Name: ${state.name || 'Pip'}. Level ${state.level || 1}. Mood: ${state.mood || 'content'}.`,
     `Today: ${stats.commits || 0} commits, ${stats.pushes || 0} pushes, ${stats.failures || 0} failures.`,
-  ].join(' ');
+  ];
+  // One recent journal fact so the model can allude to it instead of narrating.
+  const journal = (state.journal || []).filter((f) => f && !f.spokenAt && f.kind !== 'red-streak');
+  const latest = journal.length ? journalLine(journal[journal.length - 1], state) : null;
+  if (latest) parts.push(`Latest: ${latest}`);
+  return parts.join(' ');
 }
 
 async function generateLine({ event, state, apiKey, fetchImpl = fetch } = {}) {

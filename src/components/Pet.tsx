@@ -3,6 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PetState } from '../types/pet-api';
 
+// Optional sprite sheet. If public/pip.json fetches, we draw frames from
+// public/pip.png; otherwise the SVG below is the character.
+type SpriteSheet = { frame: { w: number; h: number }; animations: Record<string, number[]> };
+
+const SPRITE_STEP_MS = 120;
+
+function spriteAnim(sheet: SpriteSheet, name: string): number[] {
+  const anim = sheet.animations[name] || sheet.animations.idle;
+  return anim && anim.length ? anim : [0];
+}
+
 export default function Pet({
   state,
   onClick,
@@ -17,6 +28,37 @@ export default function Pet({
   const facingLeft = (state.facing || 1) < 0;
   const moved = useRef(false);
   const [blink, setBlink] = useState(false);
+  const [sheet, setSheet] = useState<SpriteSheet | null>(null);
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('./pip.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive && j && j.frame && j.animations) setSheet(j as SpriteSheet);
+      })
+      .catch(() => {
+        /* no art yet — the SVG is the fallback */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const animName = sleeping ? 'sleep' : blink ? 'blink' : state.state;
+  useEffect(() => {
+    if (!sheet) return;
+    const anim = spriteAnim(sheet, animName);
+    setFrame(anim[0]);
+    if (anim.length < 2) return;
+    let i = 0;
+    const id = setInterval(() => {
+      i = (i + 1) % anim.length;
+      setFrame(anim[i]);
+    }, SPRITE_STEP_MS);
+    return () => clearInterval(id);
+  }, [sheet, animName]);
 
   useEffect(() => {
     if (sleeping) {
@@ -94,7 +136,18 @@ export default function Pet({
       aria-label={`Pet ${state.name}`}
       title={state.name}
     >
-      <svg viewBox="0 0 120 120" role="img">
+      {sheet ? (
+        <div
+          className={`pet-sprite pet--${state.state} ${facingLeft ? 'pet--left' : ''}`}
+          style={{
+            width: sheet.frame.w,
+            height: sheet.frame.h,
+            backgroundImage: 'url(./pip.png)',
+            backgroundPosition: `-${frame * sheet.frame.w}px 0`,
+          }}
+        />
+      ) : (
+        <svg viewBox="0 0 120 120" role="img">
         <ellipse className="pet-shadow" cx="60" cy="108" rx="32" ry="6" />
         <g className="pet-facing">
           <g className="pet-figure">
@@ -161,6 +214,7 @@ export default function Pet({
           </g>
         </g>
       </svg>
+      )}
     </button>
   );
 }

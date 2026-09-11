@@ -31,6 +31,7 @@ const FALLBACK_SETTINGS: PetSettings = {
   launchAtLogin: false,
   repoDir: '',
   repoIsGit: false,
+  autoUpdate: true,
   hasApiKey: false,
 };
 
@@ -76,6 +77,12 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Main grows the window upward while the panel is open so the pet's feet
+  // stay on the floor.
+  useEffect(() => {
+    window.petAPI?.setHudPinned(hudOpen);
+  }, [hudOpen]);
+
   // Restore click-through when settings close or drag ends while pointer is outside.
   useEffect(() => {
     if (hudOpen || dragging || hovering.current) return;
@@ -113,6 +120,9 @@ export default function Home() {
 
   return (
     <main className="stage">
+      {hudOpen && (
+        <HUD state={state} settings={settings} pinned onFeed={feed} onPinnedChange={setHudOpen} />
+      )}
       <div
         className="hitbox"
         onMouseEnter={onHitEnter}
@@ -121,13 +131,6 @@ export default function Home() {
       >
         <div className="speech-slot">{message && <SpeechBubble text={message} />}</div>
         <Pet state={state} onClick={pet} onDragChange={setDragging} />
-        <HUD
-          state={state}
-          settings={settings}
-          pinned={hudOpen}
-          onFeed={feed}
-          onPinnedChange={setHudOpen}
-        />
       </div>
     </main>
   );

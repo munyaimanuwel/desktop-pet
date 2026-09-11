@@ -76,6 +76,16 @@ const LINES = {
     'Another day. I already live here.',
     'You are back. I kept the chair warm.',
   ],
+  LONG_ABSENCE: [
+    'You were gone a while. I kept the desk.',
+    'Back again. The desk survived without you.',
+  ],
+  END_OF_DAY: [
+    'Good work today. Rest a little.',
+    'That is a day. I am proud of us.',
+    'Enough shipping for one day. Go sit down.',
+  ],
+  UPDATE: ['I got a little update.'],
 };
 
 const counters = new Map();

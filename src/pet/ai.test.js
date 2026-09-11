@@ -8,6 +8,12 @@ test('sanitize trims quotes and rejects empty lines', () => {
   assert.strictEqual(sanitize('x'.repeat(100)), null);
 });
 
+test('sanitize rejects lines longer than 14 words', () => {
+  const fourteen = Array.from({ length: 14 }, (_, i) => `w${i}`).join(' ');
+  assert.strictEqual(sanitize(fourteen), fourteen);
+  assert.strictEqual(sanitize(`${fourteen} extra`), null);
+});
+
 test('extractText reads Responses API output_text', () => {
   assert.strictEqual(extractText({ output_text: 'Hi.' }), 'Hi.');
   assert.strictEqual(
@@ -19,6 +25,8 @@ test('extractText reads Responses API output_text', () => {
 test('only special events may call the model', () => {
   assert.strictEqual(isSpecial('COMMIT'), false);
   assert.strictEqual(isSpecial('LEVEL_UP'), true);
+  assert.strictEqual(isSpecial('LONG_ABSENCE'), true);
+  assert.strictEqual(isSpecial('END_OF_DAY'), true);
 });
 
 test('generateLine no-ops without a key', async () => {

@@ -108,3 +108,47 @@ test('state is not mutated by applyEvent', () => {
   applyEvent(s, 'COMMIT', { now: 1000 });
   assert.strictEqual(JSON.stringify(s), before);
 });
+
+test('a failure starts the red streak; a success over an hour later journals it', () => {
+  const s = fresh();
+  const failed = applyEvent(s, 'BUILD_FAILURE', { now: 1000 });
+  assert.strictEqual(failed.state.failureStreakStartedAt, 1000);
+  const hour = 60 * 60 * 1000;
+  const passed = applyEvent(failed.state, 'BUILD_SUCCESS', { now: 1000 + hour });
+  assert.strictEqual(passed.state.failureStreakStartedAt, 0);
+  assert.ok(passed.state.journal.some((f) => f.kind === 'red-streak'));
+  assert.match(passed.message, /red for an hour/i);
+});
+
+test('a quick success does not journal a red streak', () => {
+  const s = fresh();
+  const failed = applyEvent(s, 'TEST_FAILURE', { now: 1000 });
+  const passed = applyEvent(failed.state, 'TEST_SUCCESS', { now: 2000 });
+  assert.ok(!passed.state.journal.some((f) => f.kind === 'red-streak'));
+});
+
+test('a push after a long gap journals a push-gap', () => {
+  const fourDays = 4 * 24 * 60 * 60 * 1000;
+  const s = fresh({ lastPushAt: 1000 });
+  const { state, message } = applyEvent(s, 'PUSH', { now: 1000 + fourDays });
+  assert.strictEqual(state.lastPushAt, 1000 + fourDays);
+  assert.ok(state.journal.some((f) => f.kind === 'push-gap'));
+  assert.match(message, /first push/i);
+});
+
+test('a first push (no history) does not journal a gap', () => {
+  const s = fresh({ lastPushAt: 0 });
+  const { state } = applyEvent(s, 'PUSH', { now: 5000 });
+  assert.strictEqual(state.lastPushAt, 5000);
+  assert.ok(!state.journal.some((f) => f.kind === 'push-gap'));
+});
+
+test('the fifth commit journals a busy day and speaks it once', () => {
+  let state = fresh();
+  for (let i = 0; i < 5; i++) {
+    state = applyEvent(state, 'COMMIT', { now: 1000 + i * 70 * 1000 }).state;
+  }
+  assert.ok(state.journal.some((f) => f.kind === 'busy-day'));
+  const sixth = applyEvent(state, 'COMMIT', { now: 1000 + 6 * 70 * 1000 });
+  assert.ok(!/commits today/i.test(sixth.message || ''));
+});

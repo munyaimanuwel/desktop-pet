@@ -16,7 +16,10 @@
     "test": "node --test \"src/pet/*.test.js\" \"src/electron/*.test.js\" \"extensions/vscode/*.test.js\"",
     "pet": "node scripts/pet.js",
     "hooks:install": "node scripts/install-hooks.js",
-    "ext:package": "npx --yes --prefix extensions/vscode @vscode/vsce package -o desktop-pet-0.2.0.vsix"
+    "ext:package": "cd extensions/vscode && npx --yes @vscode/vsce package -o desktop-pet-0.2.0.vsix"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
@@ -42,17 +45,26 @@
       "src/electron/**/*",
       "src/pet/**/*",
       "!src/pet/**/*.test.js",
-      "!src/electron/**/*.test.js",
-      "!**/node_modules/**"
+      "!src/electron/**/*.test.js"
     ],
     "directories": {
       "output": "release"
     },
-    "publish": [],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "munyaimanuwel",
+        "repo": "desktop-pet"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",
       "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.entertainment"
     }
   },
   "allowScripts": {

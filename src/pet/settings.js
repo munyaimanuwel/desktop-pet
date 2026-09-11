@@ -17,6 +17,7 @@ function defaults() {
     apiKey: '',
     repoDir: '',
     lastBounds: null,
+    autoUpdate: true,
   };
 }
 
@@ -41,6 +42,7 @@ function normalize(raw) {
     apiKey: typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '',
     repoDir: typeof raw.repoDir === 'string' ? raw.repoDir.trim() : '',
     lastBounds: normalizeBounds(raw.lastBounds),
+    autoUpdate: raw.autoUpdate !== false,
   };
 }
 
@@ -69,6 +71,7 @@ function publicView(settings) {
     clickThrough: settings.clickThrough !== false,
     launchAtLogin: settings.launchAtLogin,
     repoDir: settings.repoDir,
+    autoUpdate: settings.autoUpdate !== false,
     hasApiKey: Boolean(settings.apiKey || process.env.XAI_API_KEY),
   };
 }

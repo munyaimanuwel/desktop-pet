@@ -11,6 +11,9 @@ test('quiet mode keeps failures and greetings', () => {
   assert.strictEqual(shouldSpeak('quiet', 'COMMIT'), false);
   assert.strictEqual(shouldSpeak('quiet', 'BUILD_FAILURE'), true);
   assert.strictEqual(shouldSpeak('quiet', 'WELCOME'), true);
+  assert.strictEqual(shouldSpeak('quiet', 'LONG_ABSENCE'), true);
+  assert.strictEqual(shouldSpeak('quiet', 'END_OF_DAY'), true);
+  assert.strictEqual(shouldSpeak('quiet', 'RED_STREAK'), true);
 });
 
 test('normal mode speaks ordinary reactions', () => {

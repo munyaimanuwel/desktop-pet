@@ -113,6 +113,14 @@ export default function HUD({
             />
             Start with the computer
           </label>
+          <label className="hud-check">
+            <input
+              type="checkbox"
+              checked={settings.autoUpdate !== false}
+              onChange={(e) => save({ autoUpdate: e.target.checked })}
+            />
+            Check for updates
+          </label>
           <label>
             Watch repo
             <input

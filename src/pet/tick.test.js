@@ -80,3 +80,23 @@ test('tick does not mutate input state', () => {
   tick(s, { now: 60 * 1000, idleSeconds: 0 });
   assert.strictEqual(JSON.stringify(s), before);
 });
+
+test('a red build for an hour is journaled once', () => {
+  const started = 1_000_000;
+  const s = fresh({ lastTickAt: started, failureStreakStartedAt: started, lastActivity: started });
+  const hourLater = started + 60 * 60 * 1000;
+  const first = tick(s, { now: hourLater, idleSeconds: 0 });
+  assert.ok(first.state.journal.some((f) => f.kind === 'red-streak'));
+  assert.strictEqual(first.messageEvent, 'RED_STREAK');
+  assert.match(first.message, /red for an hour/i);
+  // A later tick in the same streak does not repeat the 60-minute note.
+  const again = tick(first.state, { now: hourLater + 60 * 1000, idleSeconds: 0 });
+  const notes = again.state.journal.filter((f) => f.kind === 'red-streak');
+  assert.strictEqual(notes.length, 1);
+});
+
+test('tick reports the event that produced its message', () => {
+  const s = fresh();
+  const { messageEvent } = tick(s, { now: 5 * 60 * 1000 + 1000, idleSeconds: 5 * 60 + 1 });
+  assert.strictEqual(messageEvent, 'FALLING_ASLEEP');
+});

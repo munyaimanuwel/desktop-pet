@@ -12,6 +12,9 @@ const QUIET_EVENTS = new Set([
   'WAKING_UP',
   'WELCOME',
   'DAILY_GREETING',
+  'LONG_ABSENCE',
+  'END_OF_DAY',
+  'RED_STREAK',
 ]);
 
 const MODES = new Set(['off', 'quiet', 'normal']);

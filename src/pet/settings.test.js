@@ -49,3 +49,9 @@ test('lastBounds garbage normalizes to null and stays out of publicView', () => 
   const view = publicView(normalize({ lastBounds: { x: 10, y: 20 } }));
   assert.strictEqual(view.lastBounds, undefined);
 });
+
+test('autoUpdate defaults on and can be turned off', () => {
+  assert.strictEqual(normalize({}).autoUpdate, true);
+  assert.strictEqual(normalize({ autoUpdate: false }).autoUpdate, false);
+  assert.strictEqual(publicView(normalize({ autoUpdate: false })).autoUpdate, false);
+});

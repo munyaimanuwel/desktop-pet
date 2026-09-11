@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { createInitialState, clone, STATES, CLAMP } = require('./state');
 const { applyEvent } = require('./events');
+const { MAX_JOURNAL } = require('./memory');
 
 function fileFor(dataDir) {
   return path.join(dataDir, 'pet.json');
@@ -53,6 +54,24 @@ function normalize(raw) {
     failures: Math.max(0, Math.floor(finite(stats.failures, 0))),
     pets: Math.max(0, Math.floor(finite(stats.pets, 0))),
     feeds: Math.max(0, Math.floor(finite(stats.feeds, 0))),
+  };
+  // Journal-era fields. Defaulting these matters: a missing journal must be [],
+  // never undefined, or note()/recallLine would throw on an old save.
+  merged.journal = Array.isArray(merged.journal)
+    ? merged.journal.filter((f) => f && typeof f === 'object').slice(-MAX_JOURNAL)
+    : [];
+  merged.lastPushAt = Math.max(0, finite(merged.lastPushAt, 0));
+  merged.failureStreakStartedAt = Math.max(0, finite(merged.failureStreakStartedAt, 0));
+  merged.redStreakNoted = Math.max(0, Math.floor(finite(merged.redStreakNoted, 0)));
+  merged.namedAt = Math.max(0, finite(merged.namedAt, 0));
+  merged.previousName = typeof merged.previousName === 'string' ? merged.previousName : '';
+  merged.lastSeenAt = Math.max(0, finite(merged.lastSeenAt, 0));
+  merged.lastEndOfDay = typeof merged.lastEndOfDay === 'string' ? merged.lastEndOfDay : null;
+  merged.lastAiAt = Math.max(0, finite(merged.lastAiAt, 0));
+  const ai = merged.aiLinesToday && typeof merged.aiLinesToday === 'object' ? merged.aiLinesToday : {};
+  merged.aiLinesToday = {
+    day: typeof ai.day === 'string' ? ai.day : '',
+    count: Math.max(0, Math.floor(finite(ai.count, 0))),
   };
   return merged;
 }

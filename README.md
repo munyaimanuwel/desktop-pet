@@ -12,11 +12,12 @@ The pet is not a chatbot. It is a persistent digital creature that notices you: 
 - Walks the bottom of your screen (the taskbar edge) and can hop to a second monitor
 - Blinks, and faces the way it is walking
 - Has mood, needs, XP, and a level
-- Remembers today's work and talks about it once in a while
+- Remembers today's work — and notable moments (a long red build, a first push in days, a rename)
 - Reacts to developer activity (git, builds, tests, idle time)
 - Speaks up only occasionally — quiet and off modes if you need focus
 - Hides in the system tray (`Ctrl+Alt+P` / `Cmd+Alt+P` to show/hide)
-- Optional AI one-liners for rare moments (level-up, a pile of failures, good morning)
+- Optional AI one-liners for rare moments (level-up, a pile of failures, good morning,
+  long absence, end of day), capped at 4 a day
 
 ## Run it
 
@@ -78,7 +79,23 @@ as a build or test. Details: [`extensions/vscode/README.md`](extensions/vscode/R
 
 ## Optional AI
 
-Most behaviour is deterministic. If you set `XAI_API_KEY` (env, `.env`, or Settings), Pip may generate a short line for level-ups, repeated failures, and the morning greeting. If the request is slow or missing, the canned line is used.
+Most behaviour is deterministic. If you set `XAI_API_KEY` (env, `.env`, or Settings), Pip may generate a short line for level-ups, repeated failures, greetings, long absences, and the end of the day. Otherwise the canned line is used. Generation is capped at one line per 30 minutes and 4 a day.
+
+## Sprite art (optional)
+
+Pip is drawn as an SVG by default. To use a sprite sheet instead, drop two files
+in `public/`:
+
+```
+public/pip.png    # 768x96, eight 96x96 frames
+public/pip.json   # { "frame": { "w": 96, "h": 96 }, "animations": { "idle": [0,1], "walk": [2,3,4,5], ... } }
+```
+
+If `pip.json` is missing, the SVG path is used — art is optional and never blocks a release.
+
+## Updates
+
+Packaged builds check GitHub Releases on launch and once a day, download quietly, and install on quit. Turn it off with the **Check for updates** setting.
 
 ## Principles
 
@@ -90,10 +107,8 @@ Most behaviour is deterministic. If you set `XAI_API_KEY` (env, `.env`, or Setti
 
 See `project.md` for the product spec, `docs/v2.md` for the v2 plan, and `AGENTS.md` for how coding agents should work in this repo.
 
-## Next version
+## Status
 
-v1 is a creature that lives here. v2 is a creature that has a life with you.
+The **2.0** cut is done: walk the taskbar and hop monitors, plus a VS Code/Cursor extension so builds and tests arrive without a CLI. The **2.1** work — journal facts with deterministic recall, rarer capped AI, the sprite-sheet loader, compact window, macOS dmg, and quiet GitHub auto-update — is implemented here too.
 
-The shippable **2.0** cut is: walk the taskbar (and hop monitors), plus a VS Code/Cursor extension so builds and tests arrive without a CLI. Sprite sheet, journal, signed/macOS builds, and rarer AI are **2.1**.
-
-Full design, decisions, and PR order: [`docs/v2.md`](docs/v2.md).
+Still open: code signing (Windows Authenticode / Apple notarization) and making the GitHub repo public for unauthenticated updates. Full design, decisions, and PR order: [`docs/v2.md`](docs/v2.md).
